@@ -28,19 +28,22 @@ class LaqdaEvaluator:
                 text, one_hot_labels = self._format_batch(support_set, query_set, episode_internal_ids, labels_dict)
                 one_hot_labels_tensor = torch.tensor(one_hot_labels, dtype=torch.float).to(self.device)
 
+                query_labels_tensor = one_hot_labels_tensor[len(support_set):]
+                
+                # Pular batches com labels -1 (OOD). Validação é estritamente ID.
+                # (Protocolo: OOD não pode ser visto durante validação --- standard da literatura)
                 if (one_hot_labels_tensor == -1).any():
                     continue
-
-                query_labels_tensor = one_hot_labels_tensor[len(support_set):]
+                
                 try:
                     model_outputs = self.model(text, label_text)
+                    prototypes, query_embeddings, _, _, _ = model_outputs
                     loss, p, r, f1, acc, auc, topk_acc = self.loss_fn(model_outputs, query_labels_tensor)
                     batch_loss.append(loss.item())
                     batch_acc.append(acc)
                     batch_f1.append(f1)
                     
-                    # Accumulate for global metrics
-                    prototypes, query_embeddings, _, _, _ = model_outputs
+                    # Accumulate for global metrics (apenas ID)
                     dists = torch.pow(query_embeddings.unsqueeze(1) - prototypes.unsqueeze(0), 2).sum(2)
                     all_dists.append(dists.cpu())
                     all_targets.append(torch.argmax(query_labels_tensor, dim=1).cpu())

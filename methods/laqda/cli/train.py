@@ -1,7 +1,7 @@
 import argparse
 import os
 import torch
-from data.datasets.jsonl_dataset import JSONLDataset
+from data.datamodule import StandardDataModule
 from ..datamodules.episodic_sampler import EpisodicKShotSampler
 from ..utils.config_loader import load_config
 from ..utils.seed import set_seed
@@ -12,9 +12,10 @@ from ..trainers.trainer import LaqdaTrainer
 def get_parser():
     parser = argparse.ArgumentParser(description="Treinamento LAQDA usando configs YAML")
     parser.add_argument('--config', type=str, default='configs/methods_config.yaml', help='Caminho para o YAML de configuração')
-    parser.add_argument('--train_file', type=str, required=True, help='Caminho para arquivo JSONL de treino')
-    parser.add_argument('--valid_file', type=str, help='Caminho para arquivo JSONL de validação')
+    parser.add_argument('--dataset_dir', type=str, required=True, help='Caminho base do dataset (ex: .../EniacCorpus/few_shot)')
+    parser.add_argument('--fold', type=str, required=True, help='Fold (ex: 01)')
     parser.add_argument('--save_dir', type=str, default='./outputs', help='Diretório para salvar os modelos')
+    parser.add_argument('--epochs', type=int, default=None, help='Número de épocas (sobrescreve o config YAML)')
     parser.add_argument('--use_sgr', action='store_true', help='Ativa o SGR para travar e salvar o threshold no modelo LAQDA')
     return parser
 
@@ -29,19 +30,30 @@ def main():
             config['metrics'] = {}
         config['metrics']['use_sgr'] = True
     
+    # Sobrescreve epochs se passado na linha de comando
+    if args.epochs is not None:
+        if 'training' not in config:
+            config['training'] = {}
+        config['training']['epochs'] = args.epochs
+    
     set_seed(config.get('hardware', {}).get('seed', 42))
     device = config.get('hardware', {}).get('device', 0)
     device_str = f'cuda:{device}' if torch.cuda.is_available() and device >= 0 else 'cpu'
     print(f"Device: {device_str}")
     
     # Setup Datasets
-    temp_dataset = JSONLDataset(args.train_file)
-    labels_dict = {str(c): i for i, c in enumerate(temp_dataset.get_classes())}
-    train_dataset = JSONLDataset(args.train_file, class_name_to_id=labels_dict)
+    datamodule = StandardDataModule(args.dataset_dir, args.fold, keep_unknown_classes=True)
+    datamodule.setup()
+    labels_dict = datamodule.labels_dict
+    
+    # CRITICAL FIX: To avoid Train vs Test domain shift in the Label-Aware Encoder,
+    # we must train on exactly the same number of classes we will evaluate on.
+    total_classes = len(labels_dict)
+    config.setdefault('sampler', {})['nway'] = total_classes
     
     sampler_cfg = config.get('sampler', {})
     train_sampler = EpisodicKShotSampler(
-        train_dataset, 
+        datamodule.train_dataset, 
         episodes_per_epoch=config.get('training', {}).get('episode_train', 100),
         k=sampler_cfg.get('nway', 2),
         n=sampler_cfg.get('kshot', 5),
@@ -49,14 +61,14 @@ def main():
     )
     
     valid_sampler = None
-    if args.valid_file and os.path.exists(args.valid_file):
-        valid_dataset = JSONLDataset(args.valid_file, class_name_to_id=labels_dict)
+    if datamodule.valid_dataset is not None:
         valid_sampler = EpisodicKShotSampler(
-            valid_dataset,
+            datamodule.valid_dataset,
             episodes_per_epoch=config.get('training', {}).get('episode_train', 100),
             k=sampler_cfg.get('nway', 2),
             n=sampler_cfg.get('kshot', 5),
-            q=sampler_cfg.get('qshot', 25)
+            q=sampler_cfg.get('qshot', 25),
+            seed=42 # Fixar semente para validação ser determinística e comparável
         )
         
     # Load global model config

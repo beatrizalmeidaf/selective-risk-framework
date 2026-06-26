@@ -24,8 +24,17 @@ class LaqdaInferencer:
             model_cfg = self.config.get('model', {})
             sampler_cfg = self.config.get('sampler', {})
             
+            from ..utils.config_loader import load_config
+            global_config_path = 'configs/model_encoder_config.yaml'
+            if os.path.exists(global_config_path):
+                global_config = load_config(global_config_path)
+                lang = global_config.get('model', {}).get('active_language', 'pt')
+                global_model_name = global_config.get('model', {}).get(f'encoder_name_{lang}', 'bert-base-uncased')
+            else:
+                global_model_name = 'bert-base-uncased'
+            
             m = LaqdaModule(
-                model_name=model_cfg.get('name', 'bert-base-uncased'),
+                model_name=global_model_name,
                 nway=sampler_cfg.get('nway', 2),
                 kshot=sampler_cfg.get('kshot', 5),
                 qshot=sampler_cfg.get('qshot', 25),
@@ -108,3 +117,59 @@ class LaqdaInferencer:
             final_preds.append(winner)
             
         return final_preds
+
+    def evaluate_ood(self, dataset, support_text: list, labels_dict: dict, batch_size=32, save_dir='./results'):
+        id2label = {v: k for k, v in labels_dict.items()}
+        label_text_list = [id2label[i] for i in range(len(labels_dict))]
+        
+        def collate_fn(batch):
+            texts = [item['text'] for item in batch]
+            labels = [item['class_id'] for item in batch]
+            return texts, torch.tensor(labels, dtype=torch.long)
+            
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+        
+        all_dists = []
+        all_targets = []
+        
+        model = self.models[0] 
+        print("Avaliando OOD metrics (test_final)...")
+        
+        with torch.no_grad():
+            for texts, labels in tqdm(dataloader):
+                input_text = support_text + list(texts)
+                kshot = self.config.get('sampler', {}).get('kshot', 5)
+                model_outputs = model(input_text, label_text_list, kshot=kshot)
+                prototypes = model_outputs[0]
+                query_embeddings = model_outputs[1]
+                
+                dists = torch.pow(query_embeddings.unsqueeze(1) - prototypes.unsqueeze(0), 2).sum(2)
+                all_dists.append(dists.cpu())
+                all_targets.append(labels.cpu())
+                
+        all_dists_t = torch.cat(all_dists)
+        all_targets_t = torch.cat(all_targets)
+        
+        # Confidência OOD: Menor distância para um protótipo significa maior confiança de ser ID
+        # Invertemos o sinal para o reporter (maior = mais confiante)
+        min_dists, preds = torch.min(all_dists_t, dim=1)
+        confidences = -min_dists
+        
+        id_mask = all_targets_t != -1
+        ood_mask = all_targets_t == -1
+        
+        id_scores = confidences[id_mask]
+        ood_scores = confidences[ood_mask]
+        
+        from methods.metrics.reporter import MetricsReporter
+        reporter = MetricsReporter(save_dir=save_dir)
+        reporter.generate_report(
+            confidences=confidences,
+            preds=preds,
+            targets=all_targets_t,
+            id_scores=id_scores,
+            ood_scores=ood_scores,
+            model=model,
+            prefix="test_final"
+        )
+        print(f"Relatório test_final_metrics_report.json salvo em {save_dir}")
