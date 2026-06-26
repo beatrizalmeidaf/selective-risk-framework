@@ -6,5 +6,6 @@ outputs/
 .python-version
 *.slurm
 datasets-br-nlp/
+datasets-en-nlp/
 estrutura.md
 overfitting_laqda.md

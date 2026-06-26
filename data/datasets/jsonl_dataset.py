@@ -9,14 +9,16 @@ class JSONLDataset(Dataset):
     Dataset universal para leitura de arquivos JSONL.
     Padroniza os dados para garantir chaves consistentes ('text', 'label', 'class_id').
     """
-    def __init__(self, path: str, class_name_to_id: Dict[str, int] = None):
+    def __init__(self, path: str, class_name_to_id: Dict[str, int] = None, keep_unknown_classes: bool = False):
         """
         Args:
             path: Caminho para o arquivo .jsonl
             class_name_to_id: Dicionário opcional mapeando labels (str) para inteiros (class_id)
+            keep_unknown_classes: Se True, mantém classes não mapeadas e atribui id -1 (útil para OOD)
         """
         self.path = path
         self.class_name_to_id = class_name_to_id
+        self.keep_unknown_classes = keep_unknown_classes
         
         self.data = self._load_data()
         if not self.data:
@@ -34,9 +36,12 @@ class JSONLDataset(Dataset):
         self.df = self.df.assign(id=self.df.index.values)
 
         if self.class_name_to_id is not None and 'label' in self.df.columns:
-            # Filtra apenas dados com labels válidos conhecidos no mapeamento
-            self.df = self.df[self.df['label'].isin(self.class_name_to_id.keys())]
-            self.df = self.df.assign(class_id=self.df['label'].map(self.class_name_to_id))
+            if not self.keep_unknown_classes:
+                # Filtra apenas dados com labels válidos conhecidos no mapeamento
+                self.df = self.df[self.df['label'].isin(self.class_name_to_id.keys())]
+            
+            # Mapeia e preenche NaN com -1 para classes desconhecidas (se mantidas)
+            self.df = self.df.assign(class_id=self.df['label'].map(self.class_name_to_id).fillna(-1).astype(int))
         else:
             self.df = self.df.assign(class_id=-1)
 
