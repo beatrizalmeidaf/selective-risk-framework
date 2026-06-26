@@ -1,0 +1,8 @@
+# Configuração Universal dos Modelos Base
+# Define a arquitetura do encoder HuggingFace para garantir consistência
+# entre o LAQDA e os Baselines.
+
+model:
+  encoder_name_pt: "neuralmind/bert-base-portuguese-cased"
+  encoder_name_en: "google-bert/bert-base-uncased"
+  active_language: "pt"  # Escolha "pt" ou "en"
