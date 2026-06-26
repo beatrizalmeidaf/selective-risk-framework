@@ -19,20 +19,31 @@ class LaqdaModule(nn.Module):
         # Buffer para guardar o Threshold ótimo de rejeição aprendido pelo SGR
         self.register_buffer('sgr_threshold', torch.tensor(-float('inf')))
 
-    def forward(self, text: list, label_texts: list):
-        support_size = self.nway * self.kshot
+    def forward(self, text: list, label_texts: list, kshot: int = None):
+        # Durante inferência no dataset completo, label_texts contém TODAS as classes.
+        current_nway = len(label_texts)
+        current_kshot = kshot if kshot is not None else self.kshot
+        
+        support_size = current_nway * current_kshot
         
         text_embedding = self.encoder(text, label_texts)
         
         support_emb = text_embedding[:support_size]
         query_emb = text_embedding[support_size:]
         
-        c_prototypes = support_emb.view(self.nway, max(1, self.kshot), -1)
+        c_prototypes = support_emb.view(current_nway, max(1, current_kshot), -1)
         original_prototypes = c_prototypes.mean(dim=1)
         
-        sampled_data, acc = self.sampler(support_emb, query_emb)
-        
-        prototypes_data = torch.cat((c_prototypes, sampled_data), dim=1)
-        prototypes = torch.mean(prototypes_data, dim=1)
-        
+        # O QDA Sampler assume tarefas episódicas exatas (nway x qshot).
+        # Em teste/inferência (self.training == False) sobre o dataset inteiro, nós desativamos
+        # para evitar RuntimeError de reshape.
+        if self.training and current_nway == self.nway:
+            sampled_data, acc = self.sampler(support_emb, query_emb)
+            prototypes_data = torch.cat((c_prototypes, sampled_data), dim=1)
+            prototypes = torch.mean(prototypes_data, dim=1)
+        else:
+            prototypes = original_prototypes
+            acc = 0.0
+            sampled_data = None
+            
         return prototypes, query_emb, acc, original_prototypes, sampled_data

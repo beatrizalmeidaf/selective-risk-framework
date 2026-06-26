@@ -15,7 +15,14 @@ class LaqdaContrastiveLoss(nn.Module):
         prototypes, query_embeddings, acc, original_prototypes, sampled_data = model_outputs
         
         dists = torch.pow(query_embeddings.unsqueeze(1) - prototypes.unsqueeze(0), 2).sum(2)
-        loss = (dists * target).sum() / target.sum()
+        
+        # CROSS-ENTROPY FIX: 
+        # Ao invés de apenas puxar a query para o protótipo correto (o que causa mode collapse),
+        # usamos Cross-Entropy nas distâncias negativas para afastar de protótipos incorretos.
+        logits = -dists
+        target_indices = torch.argmax(target, dim=1)
+        ce_loss_fn = nn.CrossEntropyLoss()
+        loss = ce_loss_fn(logits, target_indices)
         
         num_classes = prototypes.shape[0]
         if num_classes > 1:
