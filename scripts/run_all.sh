@@ -19,17 +19,37 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 3. Dispara o LAQDA via SLURM
+# 3. Dispara Jobs no SLURM para Todos Datasets e Folds
 echo ""
-echo "--> Etapa 2: Submetendo Job SLURM para Treinamento do Modelo (LAQDA)"
-if [ -f "run_test.slurm" ]; then
-    sbatch run_test.slurm
-    echo "Job SLURM submetido! Você pode acompanhar o progresso em outputs/logs_slurm/"
-else
-    echo "AVISO: O arquivo run_test.slurm não foi encontrado na raiz."
-fi
+echo "--> Etapa 2: Submetendo Jobs SLURM (Baselines e LAQDA)"
 
-echo ""
+for CATEGORY in data/datasets/datasets-br-nlp/*; do
+  if [ -d "$CATEGORY" ]; then
+    for DATASET in "$CATEGORY"/*; do
+      if [ -d "$DATASET/few_shot" ]; then
+        for FOLD_DIR in "$DATASET/few_shot"/*; do
+          if [ -d "$FOLD_DIR" ]; then
+            FOLD=$(basename "$FOLD_DIR")
+            DATA_DIR="$DATASET/few_shot"
+            
+            # Submete LAQDA (se script existir)
+            if [ -f "scripts/run_laqda.slurm" ]; then
+                sbatch scripts/run_laqda.slurm "$DATA_DIR" "$FOLD"
+            fi
+            
+            # Submete Baseline
+            if [ -f "scripts/run_baseline.slurm" ]; then
+                sbatch scripts/run_baseline.slurm "$DATA_DIR" "$FOLD"
+            fi
+            
+          fi
+        done
+      fi
+    done
+  fi
+done
+
+echo "Jobs SLURM submetidos em paralelo! Acompanhe o progresso em outputs/logs_slurm/"
 echo "=========================================================="
 echo "Pipeline disparado com sucesso!"
 echo "Para avaliar os modelos salvos nos folds, adicione as"

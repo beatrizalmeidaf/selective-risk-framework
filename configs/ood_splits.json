@@ -1,0 +1,1332 @@
+{
+    "EniacCorpus": {
+        "01": {
+            "id_classes": [
+                "preço",
+                "serviço",
+                "comida",
+                "outros",
+                "ambiente",
+                "bebida"
+            ],
+            "ood_classes": [
+                "geral",
+                "localização"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "geral",
+                "localização",
+                "comida",
+                "outros",
+                "ambiente",
+                "bebida"
+            ],
+            "ood_classes": [
+                "preço",
+                "serviço"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "geral",
+                "localização",
+                "preço",
+                "serviço",
+                "ambiente",
+                "bebida"
+            ],
+            "ood_classes": [
+                "comida",
+                "outros"
+            ]
+        },
+        "04": {
+            "id_classes": [
+                "geral",
+                "localização",
+                "preço",
+                "serviço",
+                "comida",
+                "outros"
+            ],
+            "ood_classes": [
+                "ambiente",
+                "bebida"
+            ]
+        },
+        "05": {
+            "id_classes": [
+                "geral",
+                "localização",
+                "preço",
+                "serviço",
+                "comida",
+                "outros",
+                "ambiente",
+                "bebida"
+            ],
+            "ood_classes": []
+        }
+    },
+    "MMLU_PTBR_Corpus": {
+        "01": {
+            "id_classes": [
+                "história mundial (ensino médio)",
+                "marketing",
+                "história dos eua (ensino médio)",
+                "microeconomia (ensino médio)",
+                "astronomia",
+                "fatos globais",
+                "química (ensino superior)",
+                "biologia (ensino médio)",
+                "história da europa (ensino médio)",
+                "conhecimentos gerais",
+                "matemática elementar",
+                "filosofia",
+                "medicina (ensino superior)",
+                "física (ensino superior)",
+                "administração",
+                "nutrição",
+                "física conceitual",
+                "relações públicas",
+                "estatística (ensino médio)",
+                "governo e política (ensino médio)",
+                "psicologia profissional",
+                "genética médica",
+                "direito internacional",
+                "ética empresarial",
+                "jurisprudência",
+                "religiões mundiais",
+                "direito profissional",
+                "pré-história",
+                "virologia",
+                "aprendizado de máquina",
+                "geografia (ensino médio)",
+                "matemática (ensino superior)",
+                "biologia (ensino superior)",
+                "macroeconomia (ensino médio)",
+                "política externa dos eua",
+                "cenários morais",
+                "sociologia",
+                "ciência da computação (ensino superior)",
+                "disputas morais",
+                "econometria",
+                "envelhecimento humano",
+                "química (ensino médio)",
+                "anatomia",
+                "ciência da computação (ensino médio)",
+                "medicina profissional"
+            ],
+            "ood_classes": [
+                "matemática (ensino médio)",
+                "física (ensino médio)",
+                "segurança da computação",
+                "contabilidade profissional",
+                "engenharia elétrica",
+                "falácias lógicas",
+                "sexualidade humana",
+                "álgebra abstrata",
+                "lógica formal",
+                "estudos de segurança",
+                "conhecimento clínico",
+                "psicologia (ensino médio)"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "matemática (ensino médio)",
+                "física (ensino médio)",
+                "segurança da computação",
+                "contabilidade profissional",
+                "engenharia elétrica",
+                "falácias lógicas",
+                "sexualidade humana",
+                "álgebra abstrata",
+                "lógica formal",
+                "estudos de segurança",
+                "conhecimento clínico",
+                "psicologia (ensino médio)",
+                "medicina (ensino superior)",
+                "física (ensino superior)",
+                "administração",
+                "nutrição",
+                "física conceitual",
+                "relações públicas",
+                "estatística (ensino médio)",
+                "governo e política (ensino médio)",
+                "psicologia profissional",
+                "genética médica",
+                "direito internacional",
+                "ética empresarial",
+                "jurisprudência",
+                "religiões mundiais",
+                "direito profissional",
+                "pré-história",
+                "virologia",
+                "aprendizado de máquina",
+                "geografia (ensino médio)",
+                "matemática (ensino superior)",
+                "biologia (ensino superior)",
+                "macroeconomia (ensino médio)",
+                "política externa dos eua",
+                "cenários morais",
+                "sociologia",
+                "ciência da computação (ensino superior)",
+                "disputas morais",
+                "econometria",
+                "envelhecimento humano",
+                "química (ensino médio)",
+                "anatomia",
+                "ciência da computação (ensino médio)",
+                "medicina profissional"
+            ],
+            "ood_classes": [
+                "história mundial (ensino médio)",
+                "marketing",
+                "história dos eua (ensino médio)",
+                "microeconomia (ensino médio)",
+                "astronomia",
+                "fatos globais",
+                "química (ensino superior)",
+                "biologia (ensino médio)",
+                "história da europa (ensino médio)",
+                "conhecimentos gerais",
+                "matemática elementar",
+                "filosofia"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "matemática (ensino médio)",
+                "física (ensino médio)",
+                "segurança da computação",
+                "contabilidade profissional",
+                "engenharia elétrica",
+                "falácias lógicas",
+                "sexualidade humana",
+                "álgebra abstrata",
+                "lógica formal",
+                "estudos de segurança",
+                "conhecimento clínico",
+                "psicologia (ensino médio)",
+                "história mundial (ensino médio)",
+                "marketing",
+                "história dos eua (ensino médio)",
+                "microeconomia (ensino médio)",
+                "astronomia",
+                "fatos globais",
+                "química (ensino superior)",
+                "biologia (ensino médio)",
+                "história da europa (ensino médio)",
+                "conhecimentos gerais",
+                "matemática elementar",
+                "filosofia",
+                "jurisprudência",
+                "religiões mundiais",
+                "direito profissional",
+                "pré-história",
+                "virologia",
+                "aprendizado de máquina",
+                "geografia (ensino médio)",
+                "matemática (ensino superior)",
+                "biologia (ensino superior)",
+                "macroeconomia (ensino médio)",
+                "política externa dos eua",
+                "cenários morais",
+                "sociologia",
+                "ciência da computação (ensino superior)",
+                "disputas morais",
+                "econometria",
+                "envelhecimento humano",
+                "química (ensino médio)",
+                "anatomia",
+                "ciência da computação (ensino médio)",
+                "medicina profissional"
+            ],
+            "ood_classes": [
+                "medicina (ensino superior)",
+                "física (ensino superior)",
+                "administração",
+                "nutrição",
+                "física conceitual",
+                "relações públicas",
+                "estatística (ensino médio)",
+                "governo e política (ensino médio)",
+                "psicologia profissional",
+                "genética médica",
+                "direito internacional",
+                "ética empresarial"
+            ]
+        },
+        "04": {
+            "id_classes": [
+                "matemática (ensino médio)",
+                "física (ensino médio)",
+                "segurança da computação",
+                "contabilidade profissional",
+                "engenharia elétrica",
+                "falácias lógicas",
+                "sexualidade humana",
+                "álgebra abstrata",
+                "lógica formal",
+                "estudos de segurança",
+                "conhecimento clínico",
+                "psicologia (ensino médio)",
+                "história mundial (ensino médio)",
+                "marketing",
+                "história dos eua (ensino médio)",
+                "microeconomia (ensino médio)",
+                "astronomia",
+                "fatos globais",
+                "química (ensino superior)",
+                "biologia (ensino médio)",
+                "história da europa (ensino médio)",
+                "conhecimentos gerais",
+                "matemática elementar",
+                "filosofia",
+                "medicina (ensino superior)",
+                "física (ensino superior)",
+                "administração",
+                "nutrição",
+                "física conceitual",
+                "relações públicas",
+                "estatística (ensino médio)",
+                "governo e política (ensino médio)",
+                "psicologia profissional",
+                "genética médica",
+                "direito internacional",
+                "ética empresarial",
+                "sociologia",
+                "ciência da computação (ensino superior)",
+                "disputas morais",
+                "econometria",
+                "envelhecimento humano",
+                "química (ensino médio)",
+                "anatomia",
+                "ciência da computação (ensino médio)",
+                "medicina profissional"
+            ],
+            "ood_classes": [
+                "jurisprudência",
+                "religiões mundiais",
+                "direito profissional",
+                "pré-história",
+                "virologia",
+                "aprendizado de máquina",
+                "geografia (ensino médio)",
+                "matemática (ensino superior)",
+                "biologia (ensino superior)",
+                "macroeconomia (ensino médio)",
+                "política externa dos eua",
+                "cenários morais"
+            ]
+        },
+        "05": {
+            "id_classes": [
+                "matemática (ensino médio)",
+                "física (ensino médio)",
+                "segurança da computação",
+                "contabilidade profissional",
+                "engenharia elétrica",
+                "falácias lógicas",
+                "sexualidade humana",
+                "álgebra abstrata",
+                "lógica formal",
+                "estudos de segurança",
+                "conhecimento clínico",
+                "psicologia (ensino médio)",
+                "história mundial (ensino médio)",
+                "marketing",
+                "história dos eua (ensino médio)",
+                "microeconomia (ensino médio)",
+                "astronomia",
+                "fatos globais",
+                "química (ensino superior)",
+                "biologia (ensino médio)",
+                "história da europa (ensino médio)",
+                "conhecimentos gerais",
+                "matemática elementar",
+                "filosofia",
+                "medicina (ensino superior)",
+                "física (ensino superior)",
+                "administração",
+                "nutrição",
+                "física conceitual",
+                "relações públicas",
+                "estatística (ensino médio)",
+                "governo e política (ensino médio)",
+                "psicologia profissional",
+                "genética médica",
+                "direito internacional",
+                "ética empresarial",
+                "jurisprudência",
+                "religiões mundiais",
+                "direito profissional",
+                "pré-história",
+                "virologia",
+                "aprendizado de máquina",
+                "geografia (ensino médio)",
+                "matemática (ensino superior)",
+                "biologia (ensino superior)",
+                "macroeconomia (ensino médio)",
+                "política externa dos eua",
+                "cenários morais"
+            ],
+            "ood_classes": [
+                "sociologia",
+                "ciência da computação (ensino superior)",
+                "disputas morais",
+                "econometria",
+                "envelhecimento humano",
+                "química (ensino médio)",
+                "anatomia",
+                "ciência da computação (ensino médio)",
+                "medicina profissional"
+            ]
+        }
+    },
+    "RecognasummCorpus": {
+        "01": {
+            "id_classes": [
+                "podcast",
+                "turismo e viagem",
+                "meio ambiente",
+                "saúde e bem-estar",
+                "notícia sobre o Brasil",
+                "entretenimento e cultura",
+                "esportes",
+                "ciência e tecnologia",
+                "economia",
+                "política"
+            ],
+            "ood_classes": [
+                "notícia internacional",
+                "mídia e programas",
+                "educação"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "notícia internacional",
+                "mídia e programas",
+                "educação",
+                "saúde e bem-estar",
+                "notícia sobre o Brasil",
+                "entretenimento e cultura",
+                "esportes",
+                "ciência e tecnologia",
+                "economia",
+                "política"
+            ],
+            "ood_classes": [
+                "podcast",
+                "turismo e viagem",
+                "meio ambiente"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "notícia internacional",
+                "mídia e programas",
+                "educação",
+                "podcast",
+                "turismo e viagem",
+                "meio ambiente",
+                "esportes",
+                "ciência e tecnologia",
+                "economia",
+                "política"
+            ],
+            "ood_classes": [
+                "saúde e bem-estar",
+                "notícia sobre o Brasil",
+                "entretenimento e cultura"
+            ]
+        },
+        "04": {
+            "id_classes": [
+                "notícia internacional",
+                "mídia e programas",
+                "educação",
+                "podcast",
+                "turismo e viagem",
+                "meio ambiente",
+                "saúde e bem-estar",
+                "notícia sobre o Brasil",
+                "entretenimento e cultura",
+                "política"
+            ],
+            "ood_classes": [
+                "esportes",
+                "ciência e tecnologia",
+                "economia"
+            ]
+        },
+        "05": {
+            "id_classes": [
+                "notícia internacional",
+                "mídia e programas",
+                "educação",
+                "podcast",
+                "turismo e viagem",
+                "meio ambiente",
+                "saúde e bem-estar",
+                "notícia sobre o Brasil",
+                "entretenimento e cultura",
+                "esportes",
+                "ciência e tecnologia",
+                "economia"
+            ],
+            "ood_classes": [
+                "política"
+            ]
+        }
+    },
+    "RulingBRCorpus": {
+        "01": {
+            "id_classes": [
+                "direito tributário",
+                "direito processual penal",
+                "direito processual civil",
+                "direito internacional público",
+                "direito financeiro",
+                "direito ambiental",
+                "direito civil",
+                "direito previdenciário",
+                "direito urbanístico",
+                "direito do consumidor",
+                "direito penal",
+                "direito administrativo",
+                "direito constitucional"
+            ],
+            "ood_classes": [
+                "direito eleitoral",
+                "direito notarial",
+                "direito do trabalho",
+                "direito econômico"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "direito eleitoral",
+                "direito notarial",
+                "direito do trabalho",
+                "direito econômico",
+                "direito financeiro",
+                "direito ambiental",
+                "direito civil",
+                "direito previdenciário",
+                "direito urbanístico",
+                "direito do consumidor",
+                "direito penal",
+                "direito administrativo",
+                "direito constitucional"
+            ],
+            "ood_classes": [
+                "direito tributário",
+                "direito processual penal",
+                "direito processual civil",
+                "direito internacional público"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "direito eleitoral",
+                "direito notarial",
+                "direito do trabalho",
+                "direito econômico",
+                "direito tributário",
+                "direito processual penal",
+                "direito processual civil",
+                "direito internacional público",
+                "direito urbanístico",
+                "direito do consumidor",
+                "direito penal",
+                "direito administrativo",
+                "direito constitucional"
+            ],
+            "ood_classes": [
+                "direito financeiro",
+                "direito ambiental",
+                "direito civil",
+                "direito previdenciário"
+            ]
+        },
+        "04": {
+            "id_classes": [
+                "direito eleitoral",
+                "direito notarial",
+                "direito do trabalho",
+                "direito econômico",
+                "direito tributário",
+                "direito processual penal",
+                "direito processual civil",
+                "direito internacional público",
+                "direito financeiro",
+                "direito ambiental",
+                "direito civil",
+                "direito previdenciário",
+                "direito constitucional"
+            ],
+            "ood_classes": [
+                "direito urbanístico",
+                "direito do consumidor",
+                "direito penal",
+                "direito administrativo"
+            ]
+        },
+        "05": {
+            "id_classes": [
+                "direito eleitoral",
+                "direito notarial",
+                "direito do trabalho",
+                "direito econômico",
+                "direito tributário",
+                "direito processual penal",
+                "direito processual civil",
+                "direito internacional público",
+                "direito financeiro",
+                "direito ambiental",
+                "direito civil",
+                "direito previdenciário",
+                "direito urbanístico",
+                "direito do consumidor",
+                "direito penal",
+                "direito administrativo"
+            ],
+            "ood_classes": [
+                "direito constitucional"
+            ]
+        }
+    },
+    "HateBRCorpus": {
+        "01": {
+            "id_classes": [
+                "Não Ofensivo"
+            ],
+            "ood_classes": [
+                "Ofensivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Ofensivo"
+            ],
+            "ood_classes": [
+                "Não Ofensivo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Ofensivo",
+                "Não Ofensivo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Ofensivo",
+                "Não Ofensivo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Ofensivo",
+                "Não Ofensivo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "TuPyCorpus": {
+        "01": {
+            "id_classes": [
+                "Não Ofensivo"
+            ],
+            "ood_classes": [
+                "Ofensivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Ofensivo"
+            ],
+            "ood_classes": [
+                "Não Ofensivo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Ofensivo",
+                "Não Ofensivo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Ofensivo",
+                "Não Ofensivo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Ofensivo",
+                "Não Ofensivo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "CourtDecisionCorpus": {
+        "01": {
+            "id_classes": [
+                "recurso não provido",
+                "recurso provido"
+            ],
+            "ood_classes": [
+                "recurso parcialmente provido"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "recurso parcialmente provido",
+                "recurso provido"
+            ],
+            "ood_classes": [
+                "recurso não provido"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "recurso parcialmente provido",
+                "recurso não provido"
+            ],
+            "ood_classes": [
+                "recurso provido"
+            ]
+        },
+        "04": {
+            "id_classes": [
+                "recurso parcialmente provido",
+                "recurso não provido",
+                "recurso provido"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "recurso parcialmente provido",
+                "recurso não provido",
+                "recurso provido"
+            ],
+            "ood_classes": []
+        }
+    },
+    "IntentPTCorpus": {
+        "01": {
+            "id_classes": [
+                "diminuir brilho da luz",
+                "perguntar sobre câmbio",
+                "desligar dispositivo",
+                "recomendar filmes",
+                "apagar luz",
+                "consultar previsão do tempo",
+                "recomendar lugares",
+                "ativar limpeza",
+                "definir alarme",
+                "chamar táxi",
+                "tocar rádio",
+                "consultar rede social",
+                "pedir piada",
+                "consultar trânsito",
+                "acender luz",
+                "perguntar sobre ações da bolsa",
+                "controlar áudio",
+                "remover da lista",
+                "consultar lista",
+                "criar ou adicionar à lista",
+                "pedir comida",
+                "conversa aleatória",
+                "recomendar eventos",
+                "configurar música",
+                "indicar 'não gostei' da música",
+                "perguntar fato ou curiosidade",
+                "diminuir volume",
+                "remover evento da agenda",
+                "consultar agenda",
+                "postar em rede social",
+                "tocar música",
+                "adicionar evento na agenda",
+                "converter data ou hora",
+                "ligar dispositivo",
+                "aumentar brilho da luz",
+                "indicar 'gostei' da música",
+                "remover alarme",
+                "perguntar matemática",
+                "aumentar volume",
+                "tocar audiolivro",
+                "buscar receita",
+                "consultar alarme",
+                "consultar contato",
+                "consultar emails",
+                "preparar café",
+                "adicionar contato",
+                "buscar notícias",
+                "pedir definição"
+            ],
+            "ood_classes": [
+                "mudar cor da luz",
+                "consultar transporte",
+                "saudação",
+                "comprar passagem",
+                "consultar data ou hora",
+                "consultar pedido de comida",
+                "silenciar áudio",
+                "tocar podcast",
+                "enviar email",
+                "consultar música",
+                "buscar sobre culinária",
+                "jogar"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "mudar cor da luz",
+                "consultar transporte",
+                "saudação",
+                "comprar passagem",
+                "consultar data ou hora",
+                "consultar pedido de comida",
+                "silenciar áudio",
+                "tocar podcast",
+                "enviar email",
+                "consultar música",
+                "buscar sobre culinária",
+                "jogar",
+                "pedir piada",
+                "consultar trânsito",
+                "acender luz",
+                "perguntar sobre ações da bolsa",
+                "controlar áudio",
+                "remover da lista",
+                "consultar lista",
+                "criar ou adicionar à lista",
+                "pedir comida",
+                "conversa aleatória",
+                "recomendar eventos",
+                "configurar música",
+                "indicar 'não gostei' da música",
+                "perguntar fato ou curiosidade",
+                "diminuir volume",
+                "remover evento da agenda",
+                "consultar agenda",
+                "postar em rede social",
+                "tocar música",
+                "adicionar evento na agenda",
+                "converter data ou hora",
+                "ligar dispositivo",
+                "aumentar brilho da luz",
+                "indicar 'gostei' da música",
+                "remover alarme",
+                "perguntar matemática",
+                "aumentar volume",
+                "tocar audiolivro",
+                "buscar receita",
+                "consultar alarme",
+                "consultar contato",
+                "consultar emails",
+                "preparar café",
+                "adicionar contato",
+                "buscar notícias",
+                "pedir definição"
+            ],
+            "ood_classes": [
+                "diminuir brilho da luz",
+                "perguntar sobre câmbio",
+                "desligar dispositivo",
+                "recomendar filmes",
+                "apagar luz",
+                "consultar previsão do tempo",
+                "recomendar lugares",
+                "ativar limpeza",
+                "definir alarme",
+                "chamar táxi",
+                "tocar rádio",
+                "consultar rede social"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "mudar cor da luz",
+                "consultar transporte",
+                "saudação",
+                "comprar passagem",
+                "consultar data ou hora",
+                "consultar pedido de comida",
+                "silenciar áudio",
+                "tocar podcast",
+                "enviar email",
+                "consultar música",
+                "buscar sobre culinária",
+                "jogar",
+                "diminuir brilho da luz",
+                "perguntar sobre câmbio",
+                "desligar dispositivo",
+                "recomendar filmes",
+                "apagar luz",
+                "consultar previsão do tempo",
+                "recomendar lugares",
+                "ativar limpeza",
+                "definir alarme",
+                "chamar táxi",
+                "tocar rádio",
+                "consultar rede social",
+                "indicar 'não gostei' da música",
+                "perguntar fato ou curiosidade",
+                "diminuir volume",
+                "remover evento da agenda",
+                "consultar agenda",
+                "postar em rede social",
+                "tocar música",
+                "adicionar evento na agenda",
+                "converter data ou hora",
+                "ligar dispositivo",
+                "aumentar brilho da luz",
+                "indicar 'gostei' da música",
+                "remover alarme",
+                "perguntar matemática",
+                "aumentar volume",
+                "tocar audiolivro",
+                "buscar receita",
+                "consultar alarme",
+                "consultar contato",
+                "consultar emails",
+                "preparar café",
+                "adicionar contato",
+                "buscar notícias",
+                "pedir definição"
+            ],
+            "ood_classes": [
+                "pedir piada",
+                "consultar trânsito",
+                "acender luz",
+                "perguntar sobre ações da bolsa",
+                "controlar áudio",
+                "remover da lista",
+                "consultar lista",
+                "criar ou adicionar à lista",
+                "pedir comida",
+                "conversa aleatória",
+                "recomendar eventos",
+                "configurar música"
+            ]
+        },
+        "04": {
+            "id_classes": [
+                "mudar cor da luz",
+                "consultar transporte",
+                "saudação",
+                "comprar passagem",
+                "consultar data ou hora",
+                "consultar pedido de comida",
+                "silenciar áudio",
+                "tocar podcast",
+                "enviar email",
+                "consultar música",
+                "buscar sobre culinária",
+                "jogar",
+                "diminuir brilho da luz",
+                "perguntar sobre câmbio",
+                "desligar dispositivo",
+                "recomendar filmes",
+                "apagar luz",
+                "consultar previsão do tempo",
+                "recomendar lugares",
+                "ativar limpeza",
+                "definir alarme",
+                "chamar táxi",
+                "tocar rádio",
+                "consultar rede social",
+                "pedir piada",
+                "consultar trânsito",
+                "acender luz",
+                "perguntar sobre ações da bolsa",
+                "controlar áudio",
+                "remover da lista",
+                "consultar lista",
+                "criar ou adicionar à lista",
+                "pedir comida",
+                "conversa aleatória",
+                "recomendar eventos",
+                "configurar música",
+                "remover alarme",
+                "perguntar matemática",
+                "aumentar volume",
+                "tocar audiolivro",
+                "buscar receita",
+                "consultar alarme",
+                "consultar contato",
+                "consultar emails",
+                "preparar café",
+                "adicionar contato",
+                "buscar notícias",
+                "pedir definição"
+            ],
+            "ood_classes": [
+                "indicar 'não gostei' da música",
+                "perguntar fato ou curiosidade",
+                "diminuir volume",
+                "remover evento da agenda",
+                "consultar agenda",
+                "postar em rede social",
+                "tocar música",
+                "adicionar evento na agenda",
+                "converter data ou hora",
+                "ligar dispositivo",
+                "aumentar brilho da luz",
+                "indicar 'gostei' da música"
+            ]
+        },
+        "05": {
+            "id_classes": [
+                "mudar cor da luz",
+                "consultar transporte",
+                "saudação",
+                "comprar passagem",
+                "consultar data ou hora",
+                "consultar pedido de comida",
+                "silenciar áudio",
+                "tocar podcast",
+                "enviar email",
+                "consultar música",
+                "buscar sobre culinária",
+                "jogar",
+                "diminuir brilho da luz",
+                "perguntar sobre câmbio",
+                "desligar dispositivo",
+                "recomendar filmes",
+                "apagar luz",
+                "consultar previsão do tempo",
+                "recomendar lugares",
+                "ativar limpeza",
+                "definir alarme",
+                "chamar táxi",
+                "tocar rádio",
+                "consultar rede social",
+                "pedir piada",
+                "consultar trânsito",
+                "acender luz",
+                "perguntar sobre ações da bolsa",
+                "controlar áudio",
+                "remover da lista",
+                "consultar lista",
+                "criar ou adicionar à lista",
+                "pedir comida",
+                "conversa aleatória",
+                "recomendar eventos",
+                "configurar música",
+                "indicar 'não gostei' da música",
+                "perguntar fato ou curiosidade",
+                "diminuir volume",
+                "remover evento da agenda",
+                "consultar agenda",
+                "postar em rede social",
+                "tocar música",
+                "adicionar evento na agenda",
+                "converter data ou hora",
+                "ligar dispositivo",
+                "aumentar brilho da luz",
+                "indicar 'gostei' da música"
+            ],
+            "ood_classes": [
+                "remover alarme",
+                "perguntar matemática",
+                "aumentar volume",
+                "tocar audiolivro",
+                "buscar receita",
+                "consultar alarme",
+                "consultar contato",
+                "consultar emails",
+                "preparar café",
+                "adicionar contato",
+                "buscar notícias",
+                "pedir definição"
+            ]
+        }
+    },
+    "B2WReviewsCorpus": {
+        "01": {
+            "id_classes": [
+                "Negativo"
+            ],
+            "ood_classes": [
+                "Positivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Positivo"
+            ],
+            "ood_classes": [
+                "Negativo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "BrandsCorpus": {
+        "01": {
+            "id_classes": [
+                "Negativo"
+            ],
+            "ood_classes": [
+                "Positivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Positivo"
+            ],
+            "ood_classes": [
+                "Negativo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "BuscapeCorpus": {
+        "01": {
+            "id_classes": [
+                "Negativo"
+            ],
+            "ood_classes": [
+                "Positivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Positivo"
+            ],
+            "ood_classes": [
+                "Negativo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "KaggleTweetsCorpus": {
+        "01": {
+            "id_classes": [
+                "Negativo"
+            ],
+            "ood_classes": [
+                "Positivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Positivo"
+            ],
+            "ood_classes": [
+                "Negativo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "OlistCorpus": {
+        "01": {
+            "id_classes": [
+                "Negativo"
+            ],
+            "ood_classes": [
+                "Positivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Positivo"
+            ],
+            "ood_classes": [
+                "Negativo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "ReProCorpus": {
+        "01": {
+            "id_classes": [
+                "Negativo"
+            ],
+            "ood_classes": [
+                "Positivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Positivo"
+            ],
+            "ood_classes": [
+                "Negativo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        }
+    },
+    "UTLCorpus": {
+        "01": {
+            "id_classes": [
+                "Negativo"
+            ],
+            "ood_classes": [
+                "Positivo"
+            ]
+        },
+        "02": {
+            "id_classes": [
+                "Positivo"
+            ],
+            "ood_classes": [
+                "Negativo"
+            ]
+        },
+        "03": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "04": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        },
+        "05": {
+            "id_classes": [
+                "Positivo",
+                "Negativo"
+            ],
+            "ood_classes": []
+        }
+    }
+}
