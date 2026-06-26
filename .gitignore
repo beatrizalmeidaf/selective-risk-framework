@@ -1,6 +1,7 @@
-__pycache__/*
+__pycache__/
 venv/
 env/
 outputs/
 *.log
-datasets-br-nlp/*
+datasets-br-nlp/
+
