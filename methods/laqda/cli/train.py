@@ -11,7 +11,7 @@ from ..trainers.trainer import LaqdaTrainer
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Treinamento LAQDA usando configs YAML")
-    parser.add_argument('--config', type=str, default='methods/laqda/configs/default.yaml', help='Caminho para o YAML de configuração')
+    parser.add_argument('--config', type=str, default='configs/methods_config.yaml', help='Caminho para o YAML de configuração')
     parser.add_argument('--train_file', type=str, required=True, help='Caminho para arquivo JSONL de treino')
     parser.add_argument('--valid_file', type=str, help='Caminho para arquivo JSONL de validação')
     parser.add_argument('--save_dir', type=str, default='./outputs', help='Diretório para salvar os modelos')
@@ -21,6 +21,7 @@ def get_parser():
 def main():
     args = get_parser().parse_args()
     config = load_config(args.config)
+    config = config.get('laqda', config)
     
     # Sobrescreve flag use_sgr se passada na linha de comando
     if args.use_sgr:
@@ -59,7 +60,7 @@ def main():
         )
         
     # Load global model config
-    global_config_path = 'configs/model_config.yaml'
+    global_config_path = 'configs/model_encoder_config.yaml'
     if os.path.exists(global_config_path):
         global_config = load_config(global_config_path)
         lang = global_config.get('model', {}).get('active_language', 'pt')

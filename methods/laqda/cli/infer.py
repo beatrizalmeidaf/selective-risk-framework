@@ -7,7 +7,7 @@ from ..inference.infer import LaqdaInferencer
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Inferência LAQDA")
-    parser.add_argument('--config', type=str, default='methods/laqda/configs/default.yaml')
+    parser.add_argument('--config', type=str, default='configs/methods_config.yaml')
     parser.add_argument('--test_file', type=str, required=True, help='Arquivo JSONL de teste')
     parser.add_argument('--train_file', type=str, required=True, help='Arquivo JSONL de treino (âncoras)')
     parser.add_argument('--model_paths', type=str, nargs='+', required=True, help='Caminho(s) para os pesos')
@@ -17,6 +17,7 @@ def get_parser():
 def main():
     args = get_parser().parse_args()
     config = load_config(args.config)
+    config = config.get('laqda', config)
     
     device = config.get('hardware', {}).get('device', 0)
     device_str = f'cuda:{device}' if torch.cuda.is_available() and device >= 0 else 'cpu'

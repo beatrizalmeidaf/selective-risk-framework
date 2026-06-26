@@ -31,7 +31,7 @@ def main():
     print(f"Device: {device_str}")
     
     # 1. Carregar configuração global de arquitetura
-    global_config_path = 'configs/model_config.yaml'
+    global_config_path = 'configs/model_encoder_config.yaml'
     if os.path.exists(global_config_path):
         global_config = load_config(global_config_path)
         lang = global_config.get('model', {}).get('active_language', 'pt')
