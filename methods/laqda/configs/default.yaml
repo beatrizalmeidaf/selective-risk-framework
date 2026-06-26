@@ -1,0 +1,26 @@
+model:
+  name: "bert-base-uncased"
+  la: 1
+  num_freeze: 6
+  k: 5
+
+training:
+  epochs: 100
+  learning_rate: 0.000005
+  weight_decay: 0.000668
+  patience: 20
+  warmup_steps: 100
+  episode_train: 100
+  episode_test: 1000
+
+sampler:
+  nway: 2
+  kshot: 5
+  qshot: 25
+
+hardware:
+  seed: 42
+  device: 0
+
+metrics:
+  use_sgr: False
