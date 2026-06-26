@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  laqda:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: selective-risk/laqda:latest
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - .:/app
+      - /raid/user_beatrizalmeida:/raid/user_beatrizalmeida
+    command: ["python", "-m", "methods.laqda.cli.train"]

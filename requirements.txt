@@ -1,0 +1,10 @@
+# --- LAQDA Dependencies ---
+torch==2.8.0
+transformers==4.56.2
+pandas==2.3.2
+scikit-learn==1.6.1
+tqdm==4.67.1
+tensorboardX==2.6.4
+tokenizers==0.22.1
+numpy==2.0.2
+PyYAML==6.0.2
