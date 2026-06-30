@@ -12,7 +12,7 @@ A estrutura do projeto está organizada de forma modular:
 *   **`data/`**: Componentes de dados, datamodules do PyTorch Lightning/customizados e samplers episódicos de k-shot.
 *   **`methods/`**:
     *   **`laqda/`**: Módulos e executáveis do LAQDA (Label-Aware Encoder, QDA Sampler, Loss contrastiva, cli de treino/inferência).
-    *   **`baselines/`**: Classificadores padrão e scorers probabilísticos (Maximum Softmax Probability - MSP, Energy Score), bem como métricas baseadas em representações latentes (Distância de Mahalanobis e k-Nearest Neighbors - kNN dentro de `distance/`).
+    *   **`baselines/`**: Classificadores padrão, scorers probabilísticos (Maximum Softmax Probability - MSP, Energy Score), scorers de distância (Distância de Mahalanobis, kNN dentro de `distance/`), e scorers baseados em técnicas SOTA (**GradNorm** analítico, **ReAct** com truncamento de ativações anômalas, e **ConjNorm** por normalização de cosseno na hiperesfera dentro de `sota/`).
     *   **`sgr/`**: O algoritmo **SGR** (Selection with Guaranteed Risk) para controle estatístico de risco e limiarização pós-hoc.
     *   **`metrics/`**: A suíte unificada de avaliação (Acurácia, F1-Score, ECE calibrado, AUROC, FPR@95, AUPR e AURC).
 *   **`tests/`**: Testes automatizados para validação matemática e de integridade dos componentes do framework.
@@ -91,7 +91,7 @@ O LAQDA pode ser treinado com ou sem a ativação da otimização do threshold S
 
 ### 3. Treinamento de Baselines
 
-Para rodar os baselines, treine o classificador supervisionado base. Ele carregará os parâmetros de OOD de `configs/methods_config.yaml` e executará e salvará automaticamente o benchmark individual das técnicas (MSP, Energy Score, Mahalanobis e kNN) no conjunto de testes:
+Para rodar os baselines, treine o classificador supervisionado base. Ele carregará os parâmetros de OOD de `configs/methods_config.yaml` e executará e salvará automaticamente o benchmark individual de todas as técnicas (MSP, Energy Score, Distância de Mahalanobis, kNN, bem como as abordagens SOTA: GradNorm, ReAct e ConjNorm) no conjunto de testes:
 
 ```bash
 python -m methods.baselines.cli.train_baseline \
@@ -100,7 +100,15 @@ python -m methods.baselines.cli.train_baseline \
     --save_dir outputs/baseline/IntentPTCorpus/fold_01
 ```
 
-### 4. Executando Inferências e Avaliação (LAQDA)
+### 4. Suporte a Treinamento K-shot (Poucos Exemplos)
+
+Todos os scripts de treinamento (`train_baseline.py` e `train.py`) e de inferência (`infer.py`) aceitam o argumento opcional `--kshot <K>` (ex: `--kshot 5`). 
+
+Quando especificado:
+1. O `StandardDataModule` realiza uma amostragem determinística para limitar o conjunto de treino a no máximo `K` exemplos por classe.
+2. Os modelos e tensores gerados são salvos em subdiretórios estruturados como `kshot_<K>/` (ex: `outputs/baseline/IntentPTCorpus/fold_01/kshot_5/`).
+
+### 5. Executando Inferências e Avaliação (LAQDA)
 
 Para rodar inferências no conjunto de testes com o modelo LAQDA treinado:
 
@@ -108,11 +116,12 @@ Para rodar inferências no conjunto de testes com o modelo LAQDA treinado:
 python -m methods.laqda.cli.infer \
     --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
     --fold 01 \
-    --model_paths outputs/laqda/IntentPTCorpus/fold_01/acc_best_model.pth \
-    --output_dir outputs/laqda/IntentPTCorpus/fold_01
+    --model_paths outputs/laqda/IntentPTCorpus/fold_01/kshot_5/acc_best_model.pth \
+    --output_dir outputs/laqda/IntentPTCorpus/fold_01 \
+    --kshot 5
 ```
 
-### 5. Consolidando Métricas (LAQDA)
+### 6. Consolidando Métricas (LAQDA)
 
 Após salvar os arquivos correspondentes a cada execução de inferência, você pode gerar o relatório pivotado das métricas:
 
@@ -136,25 +145,34 @@ make test-baselines
 
 ## Execução e Monitoramento via Cluster (SLURM)
 
-Para rodar experimentos em segundo plano no cluster, use os scripts SLURM configurados.
+O framework possui suporte para execução e monitoramento de experimentos no cluster usando SLURM.
 
-*   **Submeter Job**:
-    ```bash
-    sbatch run_test.slurm
-    ```
-*   **Acompanhar Saída em Tempo Real**:
-    ```bash
-    tail -f laqda_saida_<JOB_ID>.log
-    ```
-*   **Monitorar Erros**:
-    ```bash
-    cat laqda_erro_<JOB_ID>.log
-    ```
+### 1. Pipeline de Smoke Test Multi-K-shot
+
+O script central `scripts/run_test.sh` executa de forma assíncrona um teste de integração rápido (smoke test) comparando o Baseline e o LAQDA em múltiplos cenários de K-shot (`1`, `5`, `10`):
+
+```bash
+bash scripts/run_test.sh
+```
+
+Esse script realiza as seguintes etapas de forma automática:
+1. Detecta o idioma ativo do classificador em `configs/model_encoder_config.yaml` e escolhe o corpus adequado (`IntentPTCorpus` para `pt` ou `Banking77Corpus` para `en`).
+2. Envia 6 jobs paralelos ao cluster (Baseline e LAQDA para K-shot = 1, 5, 10) usando `sbatch`.
+3. Organiza todos os logs do SLURM na pasta `outputs/logs_slurm/` e os resultados nas pastas `kshot_*`.
+
+### 2. Acompanhamento dos Jobs
+
 *   **Verificar Fila de Jobs**:
     ```bash
     squeue -u $USER
     ```
-*   **Cancelar Job**:
+*   **Acompanhar Saída em Tempo Real**:
+    ```bash
+    tail -f outputs/logs_slurm/smoke_baseline_5_<JOB_ID>.log
+    # ou
+    tail -f outputs/logs_slurm/smoke_laqda_5_<JOB_ID>.log
+    ```
+*   **Cancelar um Job**:
     ```bash
     scancel <JOB_ID>
     ```
