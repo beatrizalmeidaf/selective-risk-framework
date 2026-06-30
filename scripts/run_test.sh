@@ -7,10 +7,19 @@
 
 cd "$(dirname "$0")/.." || exit 1
 
-DATA_DIR="data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot"
+# Extrai active_language da configuracao global
+ACTIVE_LANG=$(grep -oP '(?<=active_language:\s")[^"]+' configs/model_encoder_config.yaml || echo "pt")
+
+if [ "$ACTIVE_LANG" == "en" ]; then
+    CORPUS="Banking77Corpus"
+    DATA_DIR="data/datasets/datasets-en-nlp/intent/${CORPUS}/few_shot"
+else
+    CORPUS="IntentPTCorpus"
+    DATA_DIR="data/datasets/datasets-br-nlp/intent/${CORPUS}/few_shot"
+fi
+
 FOLD="01"
 EPOCHS=20
-CORPUS="IntentPTCorpus"
 
 echo "=========================================================="
 echo "Smoke Test — ${CORPUS} | Fold ${FOLD} | ${EPOCHS} épocas"

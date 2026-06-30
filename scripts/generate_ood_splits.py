@@ -17,17 +17,19 @@ def get_classes_from_jsonl(filepath):
     return list(classes)
 
 def main():
-    base_dir = "data/datasets/datasets-br-nlp"
+    base_dirs = ["data/datasets/datasets-br-nlp", "data/datasets/datasets-en-nlp"]
     output_file = "configs/ood_splits.json"
     
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
     splits_dict = {}
     
-    # We will search for all dataset categories
-    # Structure: data/datasets/datasets-br-nlp/<category>/<corpus_name>/few_shot/<fold>/train.jsonl
-    search_pattern = os.path.join(base_dir, "*", "*", "few_shot", "01", "train.jsonl")
-    fold_1_files = glob.glob(search_pattern)
+    fold_1_files = []
+    for base_dir in base_dirs:
+        # search for all dataset categories
+        # Structure: data/datasets/<lang>/<category>/<corpus_name>/few_shot/<fold>/train.jsonl
+        search_pattern = os.path.join(base_dir, "*", "*", "few_shot", "01", "train.jsonl")
+        fold_1_files.extend(glob.glob(search_pattern))
     
     print(f"Encontrados {len(fold_1_files)} datasets.")
     
@@ -38,7 +40,7 @@ def main():
         # train_file = ... / <corpus_name> / few_shot / 01 / train.jsonl
         corpus_name = parts[-4]
         
-        # We need all classes from this corpus. We check fold 01 train, valid and test to be sure.
+        # need all classes from this corpus. check fold 01 train, valid and test to be sure
         fold_1_dir = os.path.dirname(train_file)
         all_classes = set()
         for split in ['train.jsonl', 'valid.jsonl', 'test.jsonl']:
@@ -53,7 +55,7 @@ def main():
         random.shuffle(all_classes)
         
         total_classes = len(all_classes)
-        # We will do 5 folds over classes (20% OOD per fold)
+        # 5 folds over classes (20% OOD per fold)
         num_folds = 5
         fold_size = math.ceil(total_classes / num_folds)
         

@@ -23,7 +23,18 @@ fi
 echo ""
 echo "--> Etapa 2: Submetendo Jobs SLURM (Baselines e LAQDA)"
 
-for CATEGORY in data/datasets/datasets-br-nlp/*; do
+# Extrai active_language da configuracao global
+ACTIVE_LANG=$(grep -oP '(?<=active_language:\s")[^"]+' configs/model_encoder_config.yaml || echo "pt")
+
+if [ "$ACTIVE_LANG" == "en" ]; then
+    BASE_DATASET_DIR="data/datasets/datasets-en-nlp"
+else
+    BASE_DATASET_DIR="data/datasets/datasets-br-nlp"
+fi
+
+echo "--> Utilizando diretório base de datasets: $BASE_DATASET_DIR (active_language=$ACTIVE_LANG)"
+
+for CATEGORY in "$BASE_DATASET_DIR"/*; do
   if [ -d "$CATEGORY" ]; then
     for DATASET in "$CATEGORY"/*; do
       if [ -d "$DATASET/few_shot" ]; then
