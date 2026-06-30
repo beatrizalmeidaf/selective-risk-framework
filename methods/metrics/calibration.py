@@ -6,9 +6,9 @@ def compute_ece(confidences, preds, targets, n_bins=10):
     Calcula o Expected Calibration Error (ECE).
     Quantifica a discrepância entre a confiança predita (probabilidade) e a precisão empírica real.
     """
-    if isinstance(confidences, torch.Tensor): confidences = confidences.cpu().numpy()
-    if isinstance(preds, torch.Tensor): preds = preds.cpu().numpy()
-    if isinstance(targets, torch.Tensor): targets = targets.cpu().numpy()
+    if isinstance(confidences, torch.Tensor): confidences = confidences.detach().cpu().numpy()
+    if isinstance(preds, torch.Tensor): preds = preds.detach().cpu().numpy()
+    if isinstance(targets, torch.Tensor): targets = targets.detach().cpu().numpy()
         
     # Normalização Min-Max se as confianças não forem probabilidades (ex: distâncias do LAQDA)
     if len(confidences) > 0 and (confidences.min() < 0 or confidences.max() > 1):

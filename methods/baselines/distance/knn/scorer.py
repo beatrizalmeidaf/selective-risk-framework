@@ -53,7 +53,8 @@ class KNNScorer:
             sims = torch.mm(feat_norm, bank_norm.t())
             
             # K maiores similaridades (largest=True)
-            topk_sims, _ = torch.topk(sims, k=self.k, dim=1, largest=True)
+            k_safe = min(self.k, sims.size(1))
+            topk_sims, _ = torch.topk(sims, k=k_safe, dim=1, largest=True)
             
             # Confiança é a similaridade média (já é maior para ID, então mantemos positivo)
             scores = topk_sims.mean(dim=1)
@@ -69,7 +70,8 @@ class KNNScorer:
             dists = torch.sqrt(dists)
             
             # K menores distâncias
-            topk_dists, _ = torch.topk(dists, k=self.k, dim=1, largest=False)
+            k_safe = min(self.k, dists.size(1))
+            topk_dists, _ = torch.topk(dists, k=k_safe, dim=1, largest=False)
             
             knn_dist = topk_dists.mean(dim=1)
             scores = -knn_dist
