@@ -3,12 +3,20 @@ import numpy as np
 
 class MahalanobisScorer:
     """
-    Mahalanobis Distance [Lee et al., 2018].
-    Usa um espaço latente para ajustar uma distribuição Gaussiana por classe
-    (com covariância empírica compartilhada) e usa a distância mínima aos centróides
-    como métrica de confiança.
-    Distâncias menores = maior confiança (ID).
-    Nessa implementação, invertemos o sinal para que MAIORES valores = maior confiança.
+    Scorer Baseado em Distância de Mahalanobis - "A Simple Unified Framework for Detecting Out-of-Distribution Samples and Adversarial Attacks" (Lee et al., NeurIPS 2018).
+    
+    INTUIÇÃO DO PAPER:
+    O método propõe que o espaço latente de redes neurais profundas bem treinadas pode ser bem aproximado
+    por uma Mistura de Gaussianas (Gaussian Mixture Model) onde cada classe tem sua própria média (centróide),
+    mas todas compartilham a mesma matriz de covariância. 
+    
+    A Distância de Mahalanobis, ao contrário da distância Euclidiana simples, leva em consideração essa
+    matriz de covariância (ou seja, a correlação e a escala entre as diferentes features latentes).
+    Assim, uma amostra teste é classificada computando sua Distância de Mahalanobis até o centróide mais próximo.
+    Amostras OOD estarão muito mais distantes da distribuição multivariada ID, resultando em grandes distâncias.
+    
+    Nesta implementação, calculamos a distância mínima e a invertemos (multiplicamos por -1) para que, 
+    assim como nos outros scorers, valores MAIORES representem maior confiança ID (In-Distribution).
     """
     def __init__(self):
         self.class_means = None
