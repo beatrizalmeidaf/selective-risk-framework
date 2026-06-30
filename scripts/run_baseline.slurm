@@ -2,7 +2,7 @@
 #SBATCH --job-name=baseline_test       # Nome do trabalho
 #SBATCH --output=outputs/logs_slurm/baseline_saida_%j.log    # Arquivo de saída
 #SBATCH --error=outputs/logs_slurm/baseline_erro_%j.log      # Arquivo de erro
-#SBATCH --time=05:00:00                # Tempo máximo de execução 
+#SBATCH --time=04:00:00                # Tempo máximo de execução 
 #SBATCH --partition=h100n3             # Partição 
 #SBATCH --gres=gpu:h100:1              # Pede UMA GPU
 

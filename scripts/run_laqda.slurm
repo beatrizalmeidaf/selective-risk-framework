@@ -2,7 +2,7 @@
 #SBATCH --job-name=selective_laqda_test          # Nome do trabalho
 #SBATCH --output=outputs/logs_slurm/selective_laqda_saida_%j.log    # Arquivo de saída
 #SBATCH --error=outputs/logs_slurm/selective_laqda_erro_%j.log      # Arquivo de erro
-#SBATCH --time=09:00:00                # Tempo máximo de execução 
+#SBATCH --time=04:00:00                # Tempo máximo de execução 
 #SBATCH --partition=h100n3             # Partição 
 #SBATCH --gres=gpu:h100:1              # Pede UMA GPU (conforme solicitado para o teste)
 
