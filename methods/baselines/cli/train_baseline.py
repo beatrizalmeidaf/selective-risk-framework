@@ -2,15 +2,20 @@ import argparse
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from data.datamodule import StandardDataModule
 from methods.laqda.utils.config_loader import load_config
+from methods.metrics.reporter import MetricsReporter
 from methods.baselines.models.standard_classifier import BaselineClassifier
 from methods.baselines.energy_score.scorer import EnergyScorer
 from methods.baselines.distance.mahalanobis.scorer import MahalanobisScorer
 from methods.baselines.distance.knn.scorer import KNNScorer
+from methods.baselines.sota.gradnorm.scorer import GradNormScorer
+from methods.baselines.sota.pruning.react_scorer import ReActScorer
+from methods.baselines.sota.conjnorm.scorer import ConjNormScorer
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Treinamento de Baseline Genérico para Avaliação OOD")
@@ -20,6 +25,7 @@ def get_parser():
     parser.add_argument('--batch_size', type=int, default=16, help='Tamanho do lote (Batch Size)')
     parser.add_argument('--epochs', type=int, default=10, help='Número de épocas de treinamento')
     parser.add_argument('--lr', type=float, default=2e-5, help='Taxa de aprendizado')
+    parser.add_argument('--kshot', type=int, default=None, help='Número de shots por classe (opcional, sobrescreve config)')
     return parser
 
 def collate_fn(batch):
@@ -44,8 +50,17 @@ def main():
         
     print(f"Instanciando Baseline com Encoder Universal: {global_model_name}")
 
+    # Extrair kshot do config caso não venha do argumento
+    methods_config_path = 'configs/methods_config.yaml'
+    if args.kshot is None and os.path.exists(methods_config_path):
+        methods_config = load_config(methods_config_path)
+        args.kshot = methods_config.get('baselines', {}).get('kshots', [5])[0]
+
+    if args.kshot is not None:
+        args.save_dir = os.path.join(args.save_dir, f'kshot_{args.kshot}')
+
     # 2. Datasets
-    datamodule = StandardDataModule(args.dataset_dir, args.fold, batch_size=args.batch_size, keep_unknown_classes=True)
+    datamodule = StandardDataModule(args.dataset_dir, args.fold, batch_size=args.batch_size, keep_unknown_classes=True, kshot=args.kshot)
     datamodule.setup()
     labels_dict = datamodule.labels_dict
     
@@ -126,21 +141,24 @@ def main():
                 torch.save(torch.cat(all_labels), os.path.join(args.save_dir, 'val_labels.pt'))
 
             # Padrão Ouro de Avaliação
-            from methods.metrics.reporter import MetricsReporter
             reporter = MetricsReporter(save_dir=args.save_dir)
             
             all_logits_t = torch.cat(all_logits)
             all_labels_t = torch.cat(all_labels)
             
-            # Para o baseline, a confiança é o max do softmax
-            import torch.nn.functional as F
+            # Para o baseline, a confiança (certeza ID) é o valor máximo do softmax
             probs = F.softmax(all_logits_t, dim=-1)
             confidences, preds = torch.max(probs, dim=-1)
+            
+            val_mask_id = (all_labels_t != -1)
+            val_mask_ood = (all_labels_t == -1)
             
             reporter.generate_report(
                 confidences=confidences,
                 preds=preds,
                 targets=all_labels_t,
+                id_scores=confidences[val_mask_id],
+                ood_scores=confidences[val_mask_ood],
                 model=model,
                 prefix=f"val_ep_{epoch}"
             )
@@ -200,10 +218,19 @@ def main():
             knn_k = 50
             energy_temp = 1.0
             
-        knn = KNNScorer(k=knn_k)
+        knn = KNNScorer(k=knn_k, metric='euclidean')
         knn.fit(train_features_t, train_labels_t)
         
+        knn_cont = KNNScorer(k=knn_k, metric='cosine')
+        knn_cont.fit(train_features_t, train_labels_t)
+        
         energy_scorer = EnergyScorer(temperature=energy_temp)
+        
+        # Ajustar Scorers SOTA
+        gradnorm_scorer = GradNormScorer(num_classes)
+        react_scorer = ReActScorer(model.classifier)
+        react_scorer.fit(train_features_t)
+        conjnorm_scorer = ConjNormScorer(model.classifier)
         
         # Preparar dados de Teste
         reporter = MetricsReporter(save_dir=args.save_dir)
@@ -211,9 +238,12 @@ def main():
         test_logits_t = torch.cat(all_logits)
         test_labels_t = torch.cat(all_labels)
         
-        import torch.nn.functional as F
+        # Probabilidades Softmax usadas pelo método Baseline (MSP)
         probs = F.softmax(test_logits_t, dim=-1)
         _, preds = torch.max(probs, dim=-1)
+        
+        mask_id = (test_labels_t != -1)
+        mask_ood = (test_labels_t == -1)
         
         # 1. Avaliar MSP (Maximum Softmax Probability)
         msp_confidences, _ = torch.max(probs, dim=-1)
@@ -221,6 +251,8 @@ def main():
             confidences=msp_confidences,
             preds=preds,
             targets=test_labels_t,
+            id_scores=msp_confidences[mask_id],
+            ood_scores=msp_confidences[mask_ood],
             model=model,
             prefix="test_final_msp"
         )
@@ -231,6 +263,8 @@ def main():
             confidences=energy_conf,
             preds=preds,
             targets=test_labels_t,
+            id_scores=energy_conf[mask_id],
+            ood_scores=energy_conf[mask_ood],
             model=model,
             prefix="test_final_energy"
         )
@@ -241,18 +275,70 @@ def main():
             confidences=maha_conf,
             preds=preds,
             targets=test_labels_t,
+            id_scores=maha_conf[mask_id],
+            ood_scores=maha_conf[mask_ood],
             model=model,
             prefix="test_final_mahalanobis"
         )
         
-        # 4. Avaliar KNN
+        # 4. Avaliar KNN Normal
         knn_conf = knn.compute_score(test_features_t)
         reporter.generate_report(
             confidences=knn_conf,
             preds=preds,
             targets=test_labels_t,
+            id_scores=knn_conf[mask_id],
+            ood_scores=knn_conf[mask_ood],
             model=model,
             prefix="test_final_knn"
+        )
+        
+        # 5. Avaliar KNN Contrastivo
+        knn_cont_conf = knn_cont.compute_score(test_features_t)
+        reporter.generate_report(
+            confidences=knn_cont_conf,
+            preds=preds,
+            targets=test_labels_t,
+            id_scores=knn_cont_conf[mask_id],
+            ood_scores=knn_cont_conf[mask_ood],
+            model=model,
+            prefix="test_final_knn_contrastive"
+        )
+        
+        # 6. Avaliar GradNorm
+        gradnorm_conf = gradnorm_scorer.compute_score(test_features_t, test_logits_t)
+        reporter.generate_report(
+            confidences=gradnorm_conf,
+            preds=preds,
+            targets=test_labels_t,
+            id_scores=gradnorm_conf[mask_id],
+            ood_scores=gradnorm_conf[mask_ood],
+            model=model,
+            prefix="test_final_sota_gradnorm"
+        )
+        
+        # 7. Avaliar ReAct
+        react_conf = react_scorer.compute_score(test_features_t)
+        reporter.generate_report(
+            confidences=react_conf,
+            preds=preds,
+            targets=test_labels_t,
+            id_scores=react_conf[mask_id],
+            ood_scores=react_conf[mask_ood],
+            model=model,
+            prefix="test_final_sota_react"
+        )
+        
+        # 8. Avaliar ConjNorm
+        conjnorm_conf = conjnorm_scorer.compute_score(test_features_t)
+        reporter.generate_report(
+            confidences=conjnorm_conf,
+            preds=preds,
+            targets=test_labels_t,
+            id_scores=conjnorm_conf[mask_id],
+            ood_scores=conjnorm_conf[mask_ood],
+            model=model,
+            prefix="test_final_sota_conjnorm"
         )
         
         print("Avaliação de Teste com todos os Scorers OOD concluída!")
