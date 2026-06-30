@@ -3,8 +3,8 @@ import sys
 
 from methods.baselines.maximum_softmax_prob.scorer import MSPScorer
 from methods.baselines.energy_score.scorer import EnergyScorer
-from methods.distance.mahalanobis.scorer import MahalanobisScorer
-from methods.distance.knn.scorer import KNNScorer
+from methods.baselines.distance.mahalanobis.scorer import MahalanobisScorer
+from methods.baselines.distance.knn.scorer import KNNScorer
 
 def test_all():
     print("=== Testando Métricas OOD ===")
