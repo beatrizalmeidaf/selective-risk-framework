@@ -4,7 +4,6 @@ env/
 outputs/
 *.log
 .python-version
-*.slurm
 datasets-br-nlp/
 datasets-en-nlp/
 estrutura.md
