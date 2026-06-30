@@ -59,47 +59,63 @@ Se você preferir executar o treinamento de forma isolada usando contêineres co
 
 ## Como Executar
 
-### 1. Treinamento do LAQDA
+### 1. Pré-processamento e Divisões OOD
 
-O LAQDA pode ser treinado com ou sem a ativação da otimização do threshold SGR.
+Antes de executar qualquer treinamento, garanta a geração das divisões In-Distribution (ID) e Out-of-Distribution (OOD) determinísticas para todos os folds. O framework possui um ponto de entrada centralizado para isso:
+
+```bash
+python main.py
+```
+*(Esse comando garante que o arquivo `configs/ood_splits.json` seja devidamente preenchido mapeando todos os corpus presentes nas pastas `datasets-br-nlp` e `datasets-en-nlp`).*
+
+### 2. Treinamento do LAQDA
+
+O LAQDA pode ser treinado com ou sem a ativação da otimização do threshold SGR. 
 
 *   **Treinamento Padrão**:
     ```bash
     python -m methods.laqda.cli.train \
-        --train_file datasets-br-nlp/train.jsonl \
-        --valid_file datasets-br-nlp/valid.jsonl
+        --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
+        --fold 01 \
+        --save_dir outputs/laqda/IntentPTCorpus/fold_01
     ```
 *   **Treinamento Integrado com SGR**:
     Estima e salva o threshold pós-hoc correspondente a **5% de risco** na validação.
     ```bash
     python -m methods.laqda.cli.train \
-        --train_file datasets-br-nlp/train.jsonl \
-        --valid_file datasets-br-nlp/valid.jsonl \
+        --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
+        --fold 01 \
+        --save_dir outputs/laqda/IntentPTCorpus/fold_01 \
         --use_sgr
     ```
 
-### 2. Treinamento de Baselines
+### 3. Treinamento de Baselines
 
-Para rodar os métodos MSP, Energy, Mahalanobis e kNN, primeiro treine o classificador supervisionado base:
+Para rodar os baselines, treine o classificador supervisionado base. Ele carregará os parâmetros de OOD de `configs/methods_config.yaml` e executará e salvará automaticamente o benchmark individual das técnicas (MSP, Energy Score, Mahalanobis e kNN) no conjunto de testes:
+
 ```bash
 python -m methods.baselines.cli.train_baseline \
-    --train_file datasets-br-nlp/train.jsonl \
-    --valid_file datasets-br-nlp/valid.jsonl
+    --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
+    --fold 01 \
+    --save_dir outputs/baseline/IntentPTCorpus/fold_01
 ```
 
-### 3. Executando Inferências e Avaliação (LAQDA)
+### 4. Executando Inferências e Avaliação (LAQDA)
 
-Para submissões CodaBench ou testes em múltiplos folds com ensemble:
+Para rodar inferências no conjunto de testes com o modelo LAQDA treinado:
+
 ```bash
 python -m methods.laqda.cli.infer \
-    --train_file datasets-br-nlp/train.jsonl \
-    --test_file datasets-br-nlp/test.jsonl \
-    --model_paths outputs/fold1.pth outputs/fold2.pth
+    --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
+    --fold 01 \
+    --model_paths outputs/laqda/IntentPTCorpus/fold_01/acc_best_model.pth \
+    --output_dir outputs/laqda/IntentPTCorpus/fold_01
 ```
 
-### 4. Consolidando Métricas (LAQDA)
+### 5. Consolidando Métricas (LAQDA)
 
-Após salvar os arquivos `result.csv` correspondentes a cada execução de inferência, você pode gerar um relatório pivotado:
+Após salvar os arquivos correspondentes a cada execução de inferência, você pode gerar o relatório pivotado das métricas:
+
 ```bash
 make laqda-eval
 ```
