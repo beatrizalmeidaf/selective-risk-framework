@@ -37,12 +37,13 @@ class StandardDataModule(BaseDataModule):
     Evita data leakage forçando o carregamento estruturado e o 'fit' 
     do dicionário de classes apenas no conjunto de treino.
     """
-    def __init__(self, dataset_dir: str, fold: str, batch_size: int = 16, keep_unknown_classes: bool = False):
+    def __init__(self, dataset_dir: str, fold: str, batch_size: int = 16, keep_unknown_classes: bool = False, kshot: int = None):
         super().__init__({})
         self.dataset_dir = dataset_dir
         self.fold = str(fold).zfill(2) if isinstance(fold, int) or (isinstance(fold, str) and len(fold) == 1) else str(fold)
         self.batch_size = batch_size
         self.keep_unknown_classes = keep_unknown_classes
+        self.kshot = kshot
         
         self.train_dataset = None
         self.valid_dataset = None
@@ -80,6 +81,10 @@ class StandardDataModule(BaseDataModule):
         # 2. Instanciar os datasets aplicando o fit do treino
         # keep_unknown_classes=False garante que o TREINO elimine as classes OOD
         self.train_dataset = JSONLDataset(train_file, class_name_to_id=self.labels_dict, keep_unknown_classes=False)
+        
+        if self.kshot is not None:
+            df = self.train_dataset.df
+            self.train_dataset.df = df.groupby('class_id', group_keys=False).apply(lambda x: x.sample(n=min(len(x), self.kshot), random_state=42)).reset_index(drop=True)
         
         if os.path.exists(valid_file):
             # Validação também é ESTRITAMENTE ID-only.

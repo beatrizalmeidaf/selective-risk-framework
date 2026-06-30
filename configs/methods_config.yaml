@@ -19,8 +19,8 @@ laqda:
 
   sampler:
     nway: 2
-    kshot: 5
     qshot: 25
+    kshots: [1, 5, 10]
 
   hardware:
     seed: 42
@@ -33,6 +33,7 @@ laqda:
 # Configurações de Baselines (Scorers OOD)
 # ==========================================
 baselines:
+  kshots: [1, 5, 10]
   energy_score:
     temperature: 1.0
   knn:

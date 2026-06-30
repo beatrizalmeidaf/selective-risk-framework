@@ -16,6 +16,7 @@ def get_parser():
     parser.add_argument('--fold', type=str, required=True, help='Fold (ex: 01)')
     parser.add_argument('--save_dir', type=str, default='./outputs', help='Diretório para salvar os modelos')
     parser.add_argument('--epochs', type=int, default=None, help='Número de épocas (sobrescreve o config YAML)')
+    parser.add_argument('--kshot', type=int, default=None, help='K-shot (sobrescreve o config YAML)')
     parser.add_argument('--use_sgr', action='store_true', help='Ativa o SGR para travar e salvar o threshold no modelo LAQDA')
     return parser
 
@@ -35,6 +36,13 @@ def main():
         if 'training' not in config:
             config['training'] = {}
         config['training']['epochs'] = args.epochs
+        
+    # Sobrescreve kshot se passado na linha de comando
+    if args.kshot is not None:
+        if 'sampler' not in config:
+            config['sampler'] = {}
+        config['sampler']['kshot'] = args.kshot
+        args.save_dir = os.path.join(args.save_dir, f'kshot_{args.kshot}')
     
     set_seed(config.get('hardware', {}).get('seed', 42))
     device = config.get('hardware', {}).get('device', 0)

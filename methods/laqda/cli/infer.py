@@ -12,12 +12,19 @@ def get_parser():
     parser.add_argument('--fold', type=str, required=True, help='Identificador do fold (ex: 01)')
     parser.add_argument('--model_paths', type=str, nargs='+', required=True, help='Caminho(s) para os pesos')
     parser.add_argument('--output_dir', type=str, default='./results', help='Diretório de saída para predições brutas')
+    parser.add_argument('--kshot', type=int, default=None, help='K-shot (sobrescreve o config YAML)')
     return parser
 
 def main():
     args = get_parser().parse_args()
     config = load_config(args.config)
     config = config.get('laqda', config)
+    
+    if args.kshot is not None:
+        if 'sampler' not in config:
+            config['sampler'] = {}
+        config['sampler']['kshot'] = args.kshot
+        args.output_dir = os.path.join(args.output_dir, f'kshot_{args.kshot}')
     
     device = config.get('hardware', {}).get('device', 0)
     device_str = f'cuda:{device}' if torch.cuda.is_available() and device >= 0 else 'cpu'

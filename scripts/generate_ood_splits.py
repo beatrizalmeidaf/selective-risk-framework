@@ -26,21 +26,23 @@ def main():
     
     fold_1_files = []
     for base_dir in base_dirs:
-        # search for all dataset categories
-        # Structure: data/datasets/<lang>/<category>/<corpus_name>/few_shot/<fold>/train.jsonl
+        # Busca por todas as categorias de datasets recursivamente.
+        # Estrutura esperada: data/datasets/<idioma>/<categoria>/<nome_corpus>/few_shot/<fold>/train.jsonl
         search_pattern = os.path.join(base_dir, "*", "*", "few_shot", "01", "train.jsonl")
         fold_1_files.extend(glob.glob(search_pattern))
     
     print(f"Encontrados {len(fold_1_files)} datasets.")
     
     for train_file in fold_1_files:
-        # Extract corpus name
+        # Extrai o nome do corpus a partir do caminho do arquivo.
         parts = train_file.split(os.sep)
-        # base_dir is at index 0-3 roughly, let's index from the back
-        # train_file = ... / <corpus_name> / few_shot / 01 / train.jsonl
+        # O diretório base geralmente fica nos primeiros índices.
+        # Como o caminho termina em ... / <nome_corpus> / few_shot / 01 / train.jsonl
+        # O nome do corpus sempre será o 4º elemento contando de trás para frente.
         corpus_name = parts[-4]
         
-        # need all classes from this corpus. check fold 01 train, valid and test to be sure
+        # Precisamos de todas as classes deste corpus. 
+        # Lemos os arquivos de treino, validação e teste do fold 01 para garantir que não falta nenhuma classe.
         fold_1_dir = os.path.dirname(train_file)
         all_classes = set()
         for split in ['train.jsonl', 'valid.jsonl', 'test.jsonl']:
@@ -50,12 +52,12 @@ def main():
                 
         all_classes = sorted(list(all_classes))
         
-        # Shuffle deterministically
+        # Embaralhamento determinístico para garantir reprodutibilidade.
         random.seed(42)
         random.shuffle(all_classes)
         
         total_classes = len(all_classes)
-        # 5 folds over classes (20% OOD per fold)
+        # Criação de 5 divisões (folds) sobre as classes (20% das classes serão OOD por fold).
         num_folds = 5
         fold_size = math.ceil(total_classes / num_folds)
         
