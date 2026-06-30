@@ -12,8 +12,7 @@ A estrutura do projeto está organizada de forma modular:
 *   **`data/`**: Componentes de dados, datamodules do PyTorch Lightning/customizados e samplers episódicos de k-shot.
 *   **`methods/`**:
     *   **`laqda/`**: Módulos e executáveis do LAQDA (Label-Aware Encoder, QDA Sampler, Loss contrastiva, cli de treino/inferência).
-    *   **`baselines/`**: Classificadores padrão e scorers probabilísticos (Maximum Softmax Probability - MSP, Energy Score).
-    *   **`distance/`**: Métricas de separação baseadas em representações latentes (Distância de Mahalanobis, k-Nearest Neighbors - kNN).
+    *   **`baselines/`**: Classificadores padrão e scorers probabilísticos (Maximum Softmax Probability - MSP, Energy Score), bem como métricas baseadas em representações latentes (Distância de Mahalanobis e k-Nearest Neighbors - kNN dentro de `distance/`).
     *   **`sgr/`**: O algoritmo **SGR** (Selection with Guaranteed Risk) para controle estatístico de risco e limiarização pós-hoc.
     *   **`metrics/`**: A suíte unificada de avaliação (Acurácia, F1-Score, ECE calibrado, AUROC, FPR@95, AUPR e AURC).
 *   **`tests/`**: Testes automatizados para validação matemática e de integridade dos componentes do framework.
