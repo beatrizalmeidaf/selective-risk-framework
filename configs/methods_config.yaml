@@ -30,8 +30,10 @@ laqda:
     use_sgr: False
 
 # ==========================================
-# Exemplo para outros métodos
+# Configurações de Baselines (Scorers OOD)
 # ==========================================
-# mahalanobis:
-#   model:
-#     # parâmetros...
+baselines:
+  energy_score:
+    temperature: 1.0
+  knn:
+    k: 50

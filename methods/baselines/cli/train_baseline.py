@@ -8,6 +8,9 @@ from tqdm import tqdm
 from data.datamodule import StandardDataModule
 from methods.laqda.utils.config_loader import load_config
 from methods.baselines.models.standard_classifier import BaselineClassifier
+from methods.baselines.energy_score.scorer import EnergyScorer
+from methods.baselines.distance.mahalanobis.scorer import MahalanobisScorer
+from methods.baselines.distance.knn.scorer import KNNScorer
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Treinamento de Baseline Genérico para Avaliação OOD")
@@ -169,22 +172,90 @@ def main():
         torch.save(torch.cat(all_logits), os.path.join(args.save_dir, 'test_logits.pt'))
         torch.save(torch.cat(all_labels), os.path.join(args.save_dir, 'test_labels.pt'))
 
-        # Gerar métricas do baseline para o Teste
+        # Extrair features do conjunto de treino (necessário para Mahalanobis e KNN)
+        print("Extraindo features de treino para Mahalanobis e KNN...")
+        train_features_list = []
+        train_labels_list = []
+        with torch.no_grad():
+            for texts, labels in tqdm(train_loader, desc="Train Features for OOD"):
+                labels = labels.to(device_str)
+                features, _ = model(texts)
+                train_features_list.append(features.cpu())
+                train_labels_list.append(labels.cpu())
+        
+        train_features_t = torch.cat(train_features_list)
+        train_labels_t = torch.cat(train_labels_list)
+        
+        # Ajustar Scorers de Distância
+        mahalanobis = MahalanobisScorer()
+        mahalanobis.fit(train_features_t, train_labels_t)
+        
+        methods_config_path = 'configs/methods_config.yaml'
+        if os.path.exists(methods_config_path):
+            methods_config = load_config(methods_config_path)
+            baselines_config = methods_config.get('baselines', {})
+            knn_k = baselines_config.get('knn', {}).get('k', 50)
+            energy_temp = baselines_config.get('energy_score', {}).get('temperature', 1.0)
+        else:
+            knn_k = 50
+            energy_temp = 1.0
+            
+        knn = KNNScorer(k=knn_k)
+        knn.fit(train_features_t, train_labels_t)
+        
+        energy_scorer = EnergyScorer(temperature=energy_temp)
+        
+        # Preparar dados de Teste
         reporter = MetricsReporter(save_dir=args.save_dir)
-        all_logits_t = torch.cat(all_logits)
-        all_labels_t = torch.cat(all_labels)
+        test_features_t = torch.cat(all_features)
+        test_logits_t = torch.cat(all_logits)
+        test_labels_t = torch.cat(all_labels)
         
-        probs = F.softmax(all_logits_t, dim=-1)
-        confidences, preds = torch.max(probs, dim=-1)
+        import torch.nn.functional as F
+        probs = F.softmax(test_logits_t, dim=-1)
+        _, preds = torch.max(probs, dim=-1)
         
+        # 1. Avaliar MSP (Maximum Softmax Probability)
+        msp_confidences, _ = torch.max(probs, dim=-1)
         reporter.generate_report(
-            confidences=confidences,
+            confidences=msp_confidences,
             preds=preds,
-            targets=all_labels_t,
+            targets=test_labels_t,
             model=model,
-            prefix="test_final"
+            prefix="test_final_msp"
         )
-        print("Avaliação de Teste concluída!")
+        
+        # 2. Avaliar Energy Score
+        energy_conf = energy_scorer.compute_score(test_logits_t)
+        reporter.generate_report(
+            confidences=energy_conf,
+            preds=preds,
+            targets=test_labels_t,
+            model=model,
+            prefix="test_final_energy"
+        )
+        
+        # 3. Avaliar Mahalanobis
+        maha_conf = mahalanobis.compute_score(test_features_t)
+        reporter.generate_report(
+            confidences=maha_conf,
+            preds=preds,
+            targets=test_labels_t,
+            model=model,
+            prefix="test_final_mahalanobis"
+        )
+        
+        # 4. Avaliar KNN
+        knn_conf = knn.compute_score(test_features_t)
+        reporter.generate_report(
+            confidences=knn_conf,
+            preds=preds,
+            targets=test_labels_t,
+            model=model,
+            prefix="test_final_knn"
+        )
+        
+        print("Avaliação de Teste com todos os Scorers OOD concluída!")
 
 if __name__ == "__main__":
     main()
