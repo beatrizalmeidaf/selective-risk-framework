@@ -26,6 +26,7 @@ def get_parser():
     parser.add_argument('--epochs', type=int, default=10, help='Número de épocas de treinamento')
     parser.add_argument('--lr', type=float, default=2e-5, help='Taxa de aprendizado')
     parser.add_argument('--kshot', type=int, default=None, help='Número de shots por classe (opcional, sobrescreve config)')
+    parser.add_argument('--patience', type=int, default=20, help='Patience para Early Stopping')
     return parser
 
 def collate_fn(batch):
@@ -79,6 +80,7 @@ def main():
     
     # 4. Loop de Treinamento
     best_acc = 0.0
+    epochs_no_improve = 0
     for epoch in range(args.epochs):
         model.train()
         total_loss, correct, total = 0.0, 0, 0
@@ -133,12 +135,15 @@ def main():
             
             if val_acc > best_acc:
                 best_acc = val_acc
+                epochs_no_improve = 0
                 torch.save(model.state_dict(), os.path.join(args.save_dir, 'best_baseline.pth'))
                 
                 # Salvar tensores para avaliação posterior dos OOD Scorers
                 torch.save(torch.cat(all_features), os.path.join(args.save_dir, 'val_features.pt'))
                 torch.save(torch.cat(all_logits), os.path.join(args.save_dir, 'val_logits.pt'))
                 torch.save(torch.cat(all_labels), os.path.join(args.save_dir, 'val_labels.pt'))
+            else:
+                epochs_no_improve += 1
 
             # Padrão Ouro de Avaliação
             reporter = MetricsReporter(save_dir=args.save_dir)
@@ -162,6 +167,10 @@ def main():
                 model=model,
                 prefix=f"val_ep_{epoch}"
             )
+            
+            if epochs_no_improve >= args.patience:
+                print(f"Early stopping at epoch {epoch}. No improvement for {args.patience} epochs.")
+                break
 
     # ==========================================
     # 5. Avaliação Final no Conjunto de Teste
@@ -230,7 +239,8 @@ def main():
         gradnorm_scorer = GradNormScorer(num_classes)
         react_scorer = ReActScorer(model.classifier)
         react_scorer.fit(train_features_t)
-        conjnorm_scorer = ConjNormScorer(model.classifier)
+        conjnorm_scorer = ConjNormScorer(p=2.5, alpha=1.0)
+        conjnorm_scorer.fit(train_features_t, train_labels_t)
         
         # Preparar dados de Teste
         reporter = MetricsReporter(save_dir=args.save_dir)

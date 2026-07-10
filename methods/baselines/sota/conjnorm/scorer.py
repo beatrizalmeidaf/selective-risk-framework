@@ -7,46 +7,107 @@ class ConjNormScorer:
     Scorer Baseado em Normalização Conjugada (ConjNorm).
     Baseado em "CONJNORM: TRACTABLE DENSITY ESTIMATION FOR OUT-OF-DISTRIBUTION DETECTION" (ICLR 2024).
     
-    INTUIÇÃO DO PAPER:
-    O artigo do ICLR 2024 propõe o ConjNorm, uma técnica tratável de estimativa de densidade para 
-    detecção OOD. Ele demonstra que métodos baseados puramente em logit (como o Softmax ou Energy clássico) 
-    falham ao tentar estimar a densidade do espaço latente pois ignoram a magnitude e a estrutura direcional
-    das features. 
-    
-    A solução proposta pelo ConjNorm é normalizar as features e os pesos do classificador de forma a
-    mapear os dados para uma hiperesfera (espaço de similaridade de cosseno). Ao fazer essa normalização
-    conjugada, o modelo consegue realizar uma estimativa de densidade muito mais precisa, onde a distância 
-    angular para o centróide da classe torna-se um proxy robusto para a probabilidade In-Distribution, 
-    eliminando problemas de hiper-confiança causados por anomalias de magnitude.
+    Reformulado para utilizar a Teoria de Divergência de Bregman com pares conjugados l_p e l_q, 
+    onde a constante de partição (Partition Function) é estimada de forma tratável utilizando 
+    Amostragem de Monte Carlo (Importance Sampling) sobre os dados de treino In-Domain.
     """
-    def __init__(self, classifier: nn.Linear):
-        self.classifier = classifier
+    def __init__(self, p: float = 2.5, alpha: float = 1.0):
+        """
+        Args:
+            p (float): O coeficiente da norma lp (recomendado no artigo entre 2 e 3).
+            alpha (float): Sampling ratio para o Importance Sampling da Partition Function. 
+                           Para few-shot, recomenda-se 1.0 (usar todas as amostras disponíveis).
+        """
+        self.p = p
+        self.q = p / (p - 1.0)
+        self.alpha = alpha
+        
+        self.mu_k = None
+        self.phi_k_log = None
+        self.num_classes = None
+
+    def fit(self, features: torch.Tensor, labels: torch.Tensor):
+        """
+        Ajusta os centróides e computa a constante de partição Phi(k) no espaço logarítmico.
+        Args:
+            features (torch.Tensor): Features de treino (N, D).
+            labels (torch.Tensor): Rótulos de treino (N,).
+        """
+        device = features.device
+        self.num_classes = int(labels.max().item()) + 1
+        
+        self.mu_k = torch.zeros(self.num_classes, features.size(1), device=device)
+        
+        # 1. Calcular os centróides mu_k para cada classe
+        for k in range(self.num_classes):
+            mask = (labels == k)
+            if mask.sum() > 0:
+                self.mu_k[k] = features[mask].mean(dim=0)
+                
+        # 2. Amostragem de Monte Carlo (Importance Sampling) para \Phi(k)
+        num_samples = int(features.size(0) * self.alpha)
+        num_samples = max(1, min(num_samples, features.size(0)))
+        
+        indices = torch.randperm(features.size(0), device=device)[:num_samples]
+        sampled_features = features[indices]
+        
+        # 3. Calcular a Função de Partição Phi(k) via Média Empírica (espaço de log)
+        self.phi_k_log = torch.zeros(self.num_classes, device=device)
+        for k in range(self.num_classes):
+            log_g_theta = self._compute_log_g_theta(sampled_features, k)
+            
+            # \Phi_{IS}(k) = \frac{1}{n} \sum g_\theta(z, k)
+            # log( \Phi_{IS}(k) ) = logsumexp( log_g_theta ) - log(n)
+            log_phi_k = torch.logsumexp(log_g_theta, dim=0) - torch.log(torch.tensor(num_samples, dtype=torch.float32, device=device))
+            self.phi_k_log[k] = log_phi_k
+
+    def _compute_log_g_theta(self, z: torch.Tensor, k: int) -> torch.Tensor:
+        """
+        Retorna log( g_\theta(z, k) ) = -d_\phi(z, \mu_k).
+        d_\phi(z, \mu_k) = 0.5 * ||z||_q^q + 0.5 * ||\mu_k||_q^q - <z, sign(\mu_k) * |\mu_k|^(q-1)>
+        """
+        mu = self.mu_k[k]  # (D,)
+        
+        # ||z||_q^q
+        z_q_norm_q = torch.sum(torch.abs(z) ** self.q, dim=-1)  # (N,)
+        
+        # ||\mu_k||_q^q
+        mu_q_norm_q = torch.sum(torch.abs(mu) ** self.q, dim=-1)  # escalar
+        
+        # \nabla (0.5 * ||\mu_k||_q^q) = sign(\mu_k) * |\mu_k|^(q-1)
+        grad_mu = torch.sign(mu) * (torch.abs(mu) ** (self.q - 1.0))  # (D,)
+        
+        # <z, \nabla>
+        dot_product = torch.matmul(z, grad_mu)  # (N,)
+        
+        d_phi = 0.5 * z_q_norm_q + 0.5 * mu_q_norm_q - dot_product
+        
+        return -d_phi
 
     def compute_score(self, features: torch.Tensor) -> torch.Tensor:
         """
-        Calcula o Maximum Cosine Similarity.
+        Calcula o score de densidade ID para OOD Detection.
+        S(z) = \log ( \sum_{k=1}^K \frac{g_\theta(z, k)}{\Phi(k)} )
+        
         Args:
-            features (torch.Tensor): Tensores de tamanho (N, D)
+            features (torch.Tensor): Features de teste (N, D).
         Returns:
-            torch.Tensor: Confiança (N,). Maior similaridade = maior certeza (ID).
+            torch.Tensor: Scores de confiança (N,). Valores maiores indicam In-Domain.
         """
-        device = features.device
-        # Extrai os pesos W originais treinados da camada linear (K, D)
-        weights = self.classifier.weight.to(device)
+        if self.mu_k is None or self.phi_k_log is None:
+            raise RuntimeError("ConjNormScorer precisa ser treinado usando .fit() primeiro.")
+            
+        N = features.size(0)
+        K = self.num_classes
         
-        # Normalização L2: Força todos os vetores a habitarem a superfície de uma hiperesfera (norma = 1)
-        f_norm = F.normalize(features, p=2, dim=-1)
-        w_norm = F.normalize(weights, p=2, dim=-1)
+        log_densities = torch.zeros(N, K, device=features.device)
         
-        # Similaridade do Cosseno: Em vez do produto escalar irrestrito, calcula o alinhamento direcional.
-        # Resultado está perfeitamente contido entre [-1, 1].
-        # f_norm: (N, D) multiplicada por w_norm.T: (D, K) gera as novas logits de tamanho (N, K)
-        cosine_sim = torch.mm(f_norm, w_norm.t())
+        for k in range(K):
+            log_g = self._compute_log_g_theta(features, k)  # (N,)
+            # \log( g / \Phi ) = \log(g) - \log(\Phi)
+            log_densities[:, k] = log_g - self.phi_k_log[k]
+            
+        # Score Agregado: S(z) = \log( \sum \exp(log_densities) )
+        scores = torch.logsumexp(log_densities, dim=-1)
         
-        # NOTA SOBRE O BIAS: O viés (bias) original da camada linear é descartado propositalmente, 
-        # pois ele foi otimizado para o espaço Euclidiano de magnitudes variáveis e prejudica a pureza do espaço angular.
-        
-        # A confiança OOD é simplesmente a similaridade máxima (o quão angularmente próximo o dado está da sua classe predita).
-        max_cosine, _ = torch.max(cosine_sim, dim=-1)
-        
-        return max_cosine
+        return scores

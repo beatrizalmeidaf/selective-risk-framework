@@ -17,9 +17,10 @@ class GradNormScorer:
     evitando a necessidade de rodar a custosa função `loss.backward()`:
     GradNorm = || softmax(logits) - 1/K ||_1 * || features ||_1
     """
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int, temperature: float = 1.0):
         # Armazena o número total de classes K, necessário para a distribuição uniforme (1/K).
         self.num_classes = num_classes
+        self.temperature = temperature
 
     def compute_score(self, features: torch.Tensor, logits: torch.Tensor) -> torch.Tensor:
         """
@@ -30,18 +31,23 @@ class GradNormScorer:
         Returns:
             torch.Tensor: Scores de confiança (N,). (Maior = ID, Menor = OOD).
         """
-        # Calcula as probabilidades com Softmax normal
-        probs = torch.softmax(logits, dim=-1)
+        # Aplica o Temperature Scaling sugerido no paper (embora T=1 seja considerado ótimo)
+        scaled_logits = logits / self.temperature
+        probs = torch.softmax(scaled_logits, dim=-1)
         
-        # O termo |p - 1/K| mede a diferença entre as predições do modelo e a distribuição de incerteza máxima.
-        # Norma L1 dessa diferença ao longo da dimensão das classes (dim=-1)
+        # Baseado na Equação 9 do Paper: S(x) = 1/(CT) * U * V
+        # Onde U = ||features||_1 (feat_norm)
+        # Onde V = || 1 - C * probs ||_1 = C * || 1/C - probs ||_1
+        
+        # Termo || 1/C - probs ||_1
         diff_norm = torch.norm(probs - (1.0 / self.num_classes), p=1, dim=-1)
         
-        # Norma L1 das ativações (features latentes extraídas antes da camada linear)
+        # Termo U (feat_norm)
         feat_norm = torch.norm(features, p=1, dim=-1)
         
-        # Pela fatoração de aproximação em tensores de dimensão cruzada, o gradiente analítico L1
-        # da camada linear torna-se a simples multiplicação dessas duas normas.
-        gradnorm = diff_norm * feat_norm
+        # Combinando com as constantes algébricas derivadas na Equação 9:
+        # S(x) = (1 / (C * T)) * feat_norm * (C * diff_norm)
+        # O C se cancela, restando: S(x) = (feat_norm * diff_norm) / T
+        gradnorm = (diff_norm * feat_norm) / self.temperature
         
         return gradnorm
