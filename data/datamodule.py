@@ -3,42 +3,13 @@ from typing import Dict, Any, Optional
 from torch.utils.data import DataLoader
 from data.datasets.jsonl_dataset import JSONLDataset
 
-class BaseDataModule:
-    """
-    Interface base para DataModules no selective-risk-framework.
-    Define os métodos obrigatórios para carregar datasets e configurar samplers.
-    """
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config
-
-    def prepare_data(self):
-        """ Lógica para baixar, indexar ou validar datasets (executado uma vez). """
-        pass
-
-    def setup(self):
-        """ Inicializa datasets (train, val, test) e samplers (executado em todos os workers). """
-        raise NotImplementedError
-
-    def train_dataloader(self):
-        """ Retorna o DataLoader de treino. """
-        raise NotImplementedError
-
-    def val_dataloader(self):
-        """ Retorna o DataLoader de validação. """
-        raise NotImplementedError
-
-    def test_dataloader(self):
-        """ Retorna o DataLoader de teste. """
-        raise NotImplementedError
-
-class StandardDataModule(BaseDataModule):
+class StandardDataModule:
     """
     DataModule padronizado para carregamento de dados em splits definidos.
     Evita data leakage forçando o carregamento estruturado e o 'fit' 
     do dicionário de classes apenas no conjunto de treino.
     """
     def __init__(self, dataset_dir: str, fold: str, batch_size: int = 16, keep_unknown_classes: bool = False, kshot: int = None):
-        super().__init__({})
         self.dataset_dir = dataset_dir
         self.fold = str(fold).zfill(2) if isinstance(fold, int) or (isinstance(fold, str) and len(fold) == 1) else str(fold)
         self.batch_size = batch_size
