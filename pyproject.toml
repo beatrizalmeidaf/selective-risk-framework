@@ -5,10 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "matplotlib>=3.11.0",
     "numpy==2.0.2",
     "pandas==2.3.2",
     "pyyaml==6.0.2",
     "scikit-learn==1.6.1",
+    "seaborn>=0.13.2",
     "tensorboardx==2.6.4",
     "tokenizers==0.22.1",
     "torch==2.8.0",

@@ -27,12 +27,14 @@ train-baseline:
 	@echo "Exemplo: python -m methods.baselines.cli.train_baseline --train_file <path> --valid_file <path>"
 
 test-baselines:
-	@echo "Testando algoritmos de Baselines OOD..."
-	python -m tests.test_metrics
+	@echo "Testando algoritmos e validando modelos..."
+	HF_HUB_OFFLINE=1 python -m tests.test_metrics
+	HF_HUB_OFFLINE=1 python -m tests.test_model_validation
 
 run-pipeline:
 	@echo "Executando o pipeline unificado (LAQDA + Teste de Baselines)..."
-	bash run_all.sh
+	bash scripts/run_all_pt.sh
+	bash scripts/run_all_en.sh
 
 laqda-eval:
 	@echo "Consolidando métricas do LAQDA..."

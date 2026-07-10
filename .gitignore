@@ -8,3 +8,7 @@ datasets-br-nlp/
 datasets-en-nlp/
 estrutura.md
 overfitting_laqda.md
+contribuicao.md
+metrics.md
+models.md
+run_model.sh

@@ -72,20 +72,21 @@ python main.py
 
 O LAQDA pode ser treinado com ou sem a ativação da otimização do threshold SGR. 
 
-*   **Treinamento Padrão**:
+*   **LAQDA Tradicional (Sem SGR)**:
+    Opera como um classificador fechado padrão com **100% de cobertura**. Se receber dados OOD, ele tentará encaixar em uma classe conhecida (devido à obrigatoriedade de chute), podendo gerar alta taxa de Falsos Positivos.
     ```bash
     python -m methods.laqda.cli.train \
         --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
         --fold 01 \
         --save_dir outputs/laqda/IntentPTCorpus/fold_01
     ```
-*   **Treinamento Integrado com SGR**:
-    Estima e salva o threshold pós-hoc correspondente a **5% de risco** na validação.
+*   **LAQDA Seletivo (Com SGR)**:
+    Acopla uma camada de segurança estatística rigorosa. Estima e salva um limiar crítico ($\theta^*$) correspondente a **5% de risco**. Em teste, se a confiança for menor que $\theta^*$, o modelo **se recusa a prever (abstenção)**. Isso derruba a cobertura geral, mas garante matematicamente que as respostas dadas pelo modelo tenham menos de 5% de erro, estancando os Falsos Positivos.
     ```bash
     python -m methods.laqda.cli.train \
         --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
         --fold 01 \
-        --save_dir outputs/laqda/IntentPTCorpus/fold_01 \
+        --save_dir outputs/laqda_sgr/IntentPTCorpus/fold_01 \
         --use_sgr
     ```
 
@@ -145,20 +146,22 @@ make test-baselines
 
 ## Execução e Monitoramento via Cluster (SLURM)
 
-O framework possui suporte para execução e monitoramento de experimentos no cluster usando SLURM.
+O framework possui suporte para execução e monitoramento de experimentos no cluster usando SLURM de forma assíncrona.
 
-### 1. Pipeline de Smoke Test Multi-K-shot
+### 1. Execução Completa do Benchmark
 
-O script central `scripts/run_test.sh` executa de forma assíncrona um teste de integração rápido (smoke test) comparando o Baseline e o LAQDA em múltiplos cenários de K-shot (`1`, `5`, `10`):
+Para submeter todos os algoritmos (Baselines, KNN-Contrastive, LAQDA e LAQDA+SGR) por 100 épocas sobre todos os folds (`fold_01` a `fold_05`) e múltiplos k-shots (`1`, `5`, `10`), utilize os scripts abaixo de acordo com o idioma desejado:
 
-```bash
-bash scripts/run_test.sh
-```
+*   **Para Datasets em Português (PT)**:
+    ```bash
+    bash scripts/run_all_pt.sh
+    ```
+*   **Para Datasets em Inglês (EN)**:
+    ```bash
+    bash scripts/run_all_en.sh
+    ```
 
-Esse script realiza as seguintes etapas de forma automática:
-1. Detecta o idioma ativo do classificador em `configs/model_encoder_config.yaml` e escolhe o corpus adequado (`IntentPTCorpus` para `pt` ou `Banking77Corpus` para `en`).
-2. Envia 6 jobs paralelos ao cluster (Baseline e LAQDA para K-shot = 1, 5, 10) usando `sbatch`.
-3. Organiza todos os logs do SLURM na pasta `outputs/logs_slurm/` e os resultados nas pastas `kshot_*`.
+Esses scripts disparam automaticamente múltiplos jobs paralelos no cluster usando a partição `h100n3` e alocando uma GPU H100 por execução. Os logs de saída serão salvos em `outputs/logs_slurm/pt/` e `outputs/logs_slurm/en/`.
 
 ### 2. Acompanhamento dos Jobs
 
@@ -166,15 +169,37 @@ Esse script realiza as seguintes etapas de forma automática:
     ```bash
     squeue -u $USER
     ```
-*   **Acompanhar Saída em Tempo Real**:
+*   **Acompanhar Saída de um Job em Tempo Real**:
     ```bash
-    tail -f outputs/logs_slurm/smoke_baseline_5_<JOB_ID>.log
-    # ou
-    tail -f outputs/logs_slurm/smoke_laqda_5_<JOB_ID>.log
+    tail -f outputs/logs_slurm/pt/base_<CORPUS>_<FOLD>_<K>_<JOB_ID>.log
     ```
-*   **Cancelar um Job**:
+*   **Cancelar Todos os seus Jobs**:
     ```bash
-    scancel <JOB_ID>
+    scancel -u $USER
+    ```
+
+---
+
+## Consolidação de Resultados e Gráficos
+
+O script `scripts/compare.py` é responsável por varrer os logs consolidados em `outputs/final_eval/` e gerar relatórios agregados e análises visuais.
+
+### 1. Agregação Cross-Fold (Média ± Desvio Padrão)
+
+O script detecta automaticamente a linguagem e categoria do dataset a partir da estrutura em `data/datasets/` e calcula a média e desvio padrão entre todos os 5 folds executados.
+
+*   **Gerar Tabela de Comparação (Exemplo)**:
+    ```bash
+    python scripts/compare.py --corpus IntentPTCorpus
+    ```
+
+### 2. Geração de Relatório Visual
+
+Ao passar a flag `--plot`, o script gera gráficos comparativos cruzando a métrica base **AURC** e a cobertura de garantia de risco **SGR@10%**, salvando o gráfico `.png` em `outputs/final_eval/reports/`.
+
+*   **Gerar Tabela + Gráfico Consolidado**:
+    ```bash
+    python scripts/compare.py --corpus IntentPTCorpus --plot
     ```
 
 ---
@@ -191,7 +216,7 @@ O `Makefile` atua como o orquestrador de atalhos rápidos do framework:
 | `make laqda-infer` | Exibe exemplo de parâmetros do script de inferência do LAQDA. |
 | `make train-baseline` | Exibe exemplo de treino do modelo baseline. |
 | `make test-baselines` | Executa a suíte de testes unitários (`tests/test_metrics.py`). |
-| `make run-pipeline` | Executa o script unificado (`run_all.sh`). |
+| `make run-pipeline` | Dispara o pipeline de benchmark completo (PT e EN) no SLURM. |
 | `make laqda-eval` | Consolida e apresenta os relatórios e métricas consolidadas. |
 | `make laqda-lint` | Valida sintaxe e compilação dos módulos Python. |
 | `make laqda-clean` | Remove arquivos temporários de cache e pastas `__pycache__`. |
@@ -204,10 +229,19 @@ Todas as métricas especificadas abaixo são calculadas e exportadas automaticam
 
 | Eixo de Avaliação | Métrica | Definição / Objetivo |
 |:---|:---|:---|
-| **Classificação Base** | Acurácia & F1-Score | Mede o desempenho sobre as previsões aceitas pelo modelo. |
-| **Calibração** | ECE (Expected Calibration Error) | Quantifica a discrepância entre a confiança e a precisão empírica. |
-| **Separação OOD** | AUROC / FPR@95 | Avalia a separabilidade entre dados In-Distribution (ID) vs Out-of-Distribution (OOD). |
-| **Separação OOD** | AUPR-IN / AUPR-OUT | Mede a separabilidade sob desbalanceamento severo de classes. |
-| **Predição Seletiva** | Curva RC e AURC | Avalia o trade-off entre risco e cobertura acumulada. |
-| **Predição Seletiva** | Risk @ Cobertura Fixo | Mede o risco quando a cobertura é travada em patamares como 80%, 90% ou 95%. |
-| **Garantia de Risco** | Cobertura do SGR | Mensura a cobertura empírica alcançada ao fixar níveis toleráveis de risco. |
+| **Classificação Base** | Acurácia, Balanced Acc, F1-Score | Mede o desempenho sobre as previsões aceitas pelo modelo. (Balanced Acc foca no equilíbrio de aprendizado interclasses). |
+| **Classificação Base** | Precision / Recall (Macro) | Precision foca na pureza dos acertos (menos falsos positivos), Recall foca em não esquecer as instâncias de cada classe. |
+| **Calibração** | ECE (Expected Calibration Error) | Quantifica a discrepância entre a confiança do modelo e a sua precisão empírica real. |
+| **Separação OOD** | AUROC / FPR@95 / FPR@90 | Avalia a separabilidade entre dados In-Distribution (ID) vs Out-of-Distribution (OOD). FPR mede os penetras que passam quando travamos o recall em 90/95%. |
+| **Separação OOD** | TNR@95 / AUPR-IN / AUPR-OUT | AUPR mede a separabilidade sob desbalanceamento severo de classes, e TNR mostra a "Taxa de Verdadeiros Negativos" (rejeição de OOD). |
+| **Predição Seletiva** | Curva RC e AURC / E-AURC | Avalia o trade-off entre risco e cobertura. O E-AURC subtrai o risco base do modelo para normalizar comparações. |
+| **Predição Seletiva** | Risk @ Cobertura Fixo | Mede o risco quando a cobertura do sistema é travada cirurgicamente em patamares (ex: 50%, 80%, 95%). |
+| **Garantia de Risco** | Cobertura do SGR | Mensura a cobertura empírica alcançada ao fixar níveis teóricos restritos de risco (via PAC Bounds). |
+| **Abstenção Ativa** | Taxa Abstenção / Acc Aceita | Exclusiva do LAQDA com SGR. Mede a porcentagem real de testes classificados como OOD/Rejeição (-1) e a acurácia do que sobrou na peneira. |classificados como OOD/Rejeição (-1) e a acurácia do que sobrou na peneira. |
+
+
+./scripts/run_all_pt.sh
+./scripts/run_all_en.sh
+
+python scripts/compare.py --corpus IntentPTCorpus --plot
+
