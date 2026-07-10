@@ -13,6 +13,27 @@ def get_parser():
     parser.add_argument('--model_paths', type=str, nargs='+', required=True, help='Caminho(s) para os pesos')
     parser.add_argument('--output_dir', type=str, default='./results', help='Diretório de saída para predições brutas')
     parser.add_argument('--kshot', type=int, default=None, help='K-shot (sobrescreve o config YAML)')
+    parser.add_argument(
+        '--score_mode',
+        type=str,
+        default='all',
+        choices=['all', 'default', 'margin', 'mcdropout', 'tempscale', 'xmahalanobis'],
+        help=(
+            'Estratégia de score de confiança a usar na inferência. '
+            '"all" executa todas e gera um relatório por estratégia. '
+            '"default": -min_dist (original). '
+            '"margin": second_min - min_dist. '
+            '"mcdropout": Monte Carlo Dropout (N=20 passes). '
+            '"tempscale": Temperature Scaling calibrado no val set. '
+            '"xmahalanobis": X-Mahalanobis Feature Mixing.'
+        )
+    )
+    parser.add_argument(
+        '--mc_passes',
+        type=int,
+        default=20,
+        help='Número de passes estocásticos para MC Dropout (padrão: 20).'
+    )
     return parser
 
 def main():
@@ -35,19 +56,73 @@ def main():
     labels_dict = datamodule.labels_dict
     
     test_dataset = datamodule.test_dataset
+    val_dataset = datamodule.valid_dataset  # Usado pelo Temperature Scaling
     
     inferencer = LaqdaInferencer(model_paths=args.model_paths, config=config, device=device_str)
     
-    support_text = inferencer.prepare_support_set(datamodule.train_dataset.path, labels_dict, config.get('sampler', {}).get('kshot', 5))
+    support_text = inferencer.prepare_support_set(
+        datamodule.train_dataset.path, labels_dict, config.get('sampler', {}).get('kshot', 5)
+    )
     
-    print("Iniciando inferência para ensemble e geração de métricas OOD...")
-    inferencer.evaluate_ood(test_dataset, support_text, labels_dict, batch_size=32, save_dir=args.output_dir)
+    print(f"\nIniciando inferência — score_mode='{args.score_mode}'")
+    print(f"Output dir: {args.output_dir}\n")
+
+    run_default   = args.score_mode in ('all', 'default')
+    run_margin    = args.score_mode in ('all', 'margin')
+    run_mcdropout = args.score_mode in ('all', 'mcdropout')
+    run_tempscale = args.score_mode in ('all', 'tempscale')
+    run_xmaha     = args.score_mode in ('all', 'xmahalanobis')
+
+    if run_default:
+        print("=" * 60)
+        print(">>> Estratégia: DEFAULT (-min_dist)")
+        print("=" * 60)
+        inferencer.evaluate_ood(
+            test_dataset, support_text, labels_dict,
+            batch_size=32, save_dir=args.output_dir
+        )
+
+    if run_margin:
+        print("=" * 60)
+        print(">>> Estratégia: DISTANCE MARGIN (second_min - min_dist)")
+        print("=" * 60)
+        inferencer.evaluate_ood_margin(
+            test_dataset, support_text, labels_dict,
+            batch_size=32, save_dir=args.output_dir
+        )
+
+    if run_mcdropout:
+        print("=" * 60)
+        print(f">>> Estratégia: MC DROPOUT ({args.mc_passes} passes)")
+        print("=" * 60)
+        inferencer.evaluate_ood_mc_dropout(
+            test_dataset, support_text, labels_dict,
+            batch_size=32, save_dir=args.output_dir,
+            n_passes=args.mc_passes
+        )
+
+    if run_tempscale:
+        print("=" * 60)
+        print(">>> Estratégia: TEMPERATURE SCALING (calibrado no val set)")
+        print("=" * 60)
+        inferencer.evaluate_ood_temp_scaling(
+            test_dataset, support_text, labels_dict,
+            val_dataset=val_dataset,
+            batch_size=32, save_dir=args.output_dir
+        )
+
+    if run_xmaha:
+        print("=" * 60)
+        print(">>> Estratégia: X-MAHALANOBIS (Feature Mixing)")
+        print("=" * 60)
+        inferencer.evaluate_ood_xmahalanobis(
+            test_dataset, support_text, labels_dict,
+            batch_size=32, save_dir=args.output_dir
+        )
+
+    print("\nInferência concluída!")
+    print(f"Relatórios salvos em: {args.output_dir}")
     
-    # Se quiser salvar também as predições de texto bruto, podemos descomentar abaixo:
-    # preds = inferencer.predict_ensemble(test_dataset, support_text, labels_dict, batch_size=32)
-    # from ..inference.ensemble import MajorityVotingEnsemble
-    # saver = MajorityVotingEnsemble(args.output_dir)
-    # saver.save(preds)
 
 if __name__ == "__main__":
     main()

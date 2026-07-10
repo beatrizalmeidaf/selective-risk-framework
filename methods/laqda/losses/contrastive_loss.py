@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class LaqdaContrastiveLoss(nn.Module):
     """
@@ -14,7 +15,15 @@ class LaqdaContrastiveLoss(nn.Module):
     def forward(self, model_outputs: tuple, target: torch.Tensor):
         prototypes, query_embeddings, acc, original_prototypes, sampled_data = model_outputs
         
-        dists = torch.pow(query_embeddings.unsqueeze(1) - prototypes.unsqueeze(0), 2).sum(2)
+        tau = 15.0
+        q_norm = F.normalize(query_embeddings, p=2, dim=1)
+        p_norm = F.normalize(prototypes, p=2, dim=1)
+        
+        # Similaridade do Cosseno
+        sim = torch.mm(q_norm, p_norm.t())
+        
+        # Distância como o negativo da similaridade escalonada
+        dists = -sim * tau
         
         # CROSS-ENTROPY FIX: 
         # Ao invés de apenas puxar a query para o protótipo correto (o que causa mode collapse),
@@ -26,7 +35,11 @@ class LaqdaContrastiveLoss(nn.Module):
         
         num_classes = prototypes.shape[0]
         if num_classes > 1:
-            p_dists = torch.pow(prototypes.unsqueeze(1) - prototypes.unsqueeze(0), 2).sum(2)
+            # Para a perda contrastiva, mantemos a lógica de afastar as classes
+            # usando a própria similaridade. p_sim é a matriz C x C
+            p_sim = torch.mm(p_norm, p_norm.t())
+            p_dists = -p_sim * tau
+            
             mask = ~torch.eye(num_classes, dtype=torch.bool, device=p_dists.device)
             contrastive_loss = torch.exp(-p_dists[mask] / self.t).mean()
         else:

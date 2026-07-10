@@ -6,8 +6,8 @@ def compute_auroc(id_scores, ood_scores):
     """
     Calcula AUROC. Assumimos que Scores Maiores = ID, Scores Menores = OOD.
     """
-    if isinstance(id_scores, torch.Tensor): id_scores = id_scores.cpu().numpy()
-    if isinstance(ood_scores, torch.Tensor): ood_scores = ood_scores.cpu().numpy()
+    if isinstance(id_scores, torch.Tensor): id_scores = id_scores.detach().cpu().numpy()
+    if isinstance(ood_scores, torch.Tensor): ood_scores = ood_scores.detach().cpu().numpy()
         
     labels = np.concatenate([np.ones(len(id_scores)), np.zeros(len(ood_scores))])
     scores = np.concatenate([id_scores, ood_scores])
@@ -18,8 +18,8 @@ def compute_fpr_at_tpr(id_scores, ood_scores, target_tpr=0.95):
     """
     Calcula FPR@95 TPR (FPR quando a cobertura ID é fixada em 95%).
     """
-    if isinstance(id_scores, torch.Tensor): id_scores = id_scores.cpu().numpy()
-    if isinstance(ood_scores, torch.Tensor): ood_scores = ood_scores.cpu().numpy()
+    if isinstance(id_scores, torch.Tensor): id_scores = id_scores.detach().cpu().numpy()
+    if isinstance(ood_scores, torch.Tensor): ood_scores = ood_scores.detach().cpu().numpy()
         
     labels = np.concatenate([np.ones(len(id_scores)), np.zeros(len(ood_scores))])
     scores = np.concatenate([id_scores, ood_scores])
@@ -39,8 +39,8 @@ def compute_aupr(id_scores, ood_scores):
     AUPR-IN: In-distribution é a classe Positiva.
     AUPR-OUT: Out-of-distribution é a classe Positiva (scores invertidos).
     """
-    if isinstance(id_scores, torch.Tensor): id_scores = id_scores.cpu().numpy()
-    if isinstance(ood_scores, torch.Tensor): ood_scores = ood_scores.cpu().numpy()
+    if isinstance(id_scores, torch.Tensor): id_scores = id_scores.detach().cpu().numpy()
+    if isinstance(ood_scores, torch.Tensor): ood_scores = ood_scores.detach().cpu().numpy()
         
     # AUPR-IN
     labels_in = np.concatenate([np.ones(len(id_scores)), np.zeros(len(ood_scores))])
@@ -62,8 +62,14 @@ def evaluate_ood(id_scores, ood_scores):
     if len(ood_scores) == 0:
         return {}
         
+    fpr_95 = compute_fpr_at_tpr(id_scores, ood_scores, target_tpr=0.95)
+    fpr_90 = compute_fpr_at_tpr(id_scores, ood_scores, target_tpr=0.90)
+    tnr_95 = 1.0 - fpr_95
+    
     return {
         "auroc": compute_auroc(id_scores, ood_scores),
-        "fpr_at_95": compute_fpr_at_tpr(id_scores, ood_scores, target_tpr=0.95),
+        "fpr_at_95": fpr_95,
+        "fpr_at_90": fpr_90,
+        "tnr_at_95": tnr_95,
         **compute_aupr(id_scores, ood_scores)
     }

@@ -15,13 +15,14 @@ class MetricsReporter:
     def __init__(self, save_dir=None):
         self.save_dir = save_dir
         
-    def generate_report(self, confidences, preds, targets, id_scores=None, ood_scores=None, model=None, prefix="val"):
+    def generate_report(self, confidences, preds, targets, id_scores=None, ood_scores=None, model=None, prefix="val", **extras):
         """
         Gera o relatório consolidado de métricas.
         - confidences: Tensor com as confianças (probabilidade da classe predita ou score de incerteza invertido).
         - preds: Tensor com as classes preditas.
         - targets: Tensor com as labels reais.
         - id_scores, ood_scores: Tensores para avaliação OOD separada (opcional durante o treino base).
+        - extras: Métricas adicionais a serem incluídas no relatório.
         """
         report = {}
         
@@ -42,6 +43,9 @@ class MetricsReporter:
         if model is not None:
             from .efficiency import compute_parameters
             report.update(compute_parameters(model))
+            
+        # 6. Adicionar métricas extras injetadas (ex: Abstenção SGR)
+        report.update(extras)
             
         # Converter numpy floats para python floats para JSON
         for k, v in report.items():

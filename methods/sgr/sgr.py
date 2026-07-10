@@ -41,9 +41,9 @@ class SGRController:
         Algoritmo 1: SGR(f, k_f, delta, r_star, S_m)
         Retorna o threshold (theta_star) ótimo que garante o risco r_star.
         """
-        if isinstance(confidences, torch.Tensor): confidences = confidences.cpu().numpy()
-        if isinstance(preds, torch.Tensor): preds = preds.cpu().numpy()
-        if isinstance(targets, torch.Tensor): targets = targets.cpu().numpy()
+        if isinstance(confidences, torch.Tensor): confidences = confidences.detach().cpu().numpy()
+        if isinstance(preds, torch.Tensor): preds = preds.detach().cpu().numpy()
+        if isinstance(targets, torch.Tensor): targets = targets.detach().cpu().numpy()
 
         m_total = len(confidences)
         

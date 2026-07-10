@@ -19,14 +19,18 @@ class LaqdaModule(nn.Module):
         # Buffer para guardar o Threshold ótimo de rejeição aprendido pelo SGR
         self.register_buffer('sgr_threshold', torch.tensor(-float('inf')))
 
-    def forward(self, text: list, label_texts: list, kshot: int = None):
+    def forward(self, text: list, label_texts: list, kshot: int = None, output_hidden_states: bool = False):
         # Durante inferência no dataset completo, label_texts contém TODAS as classes.
         current_nway = len(label_texts)
         current_kshot = kshot if kshot is not None else self.kshot
         
         support_size = current_nway * current_kshot
         
-        text_embedding = self.encoder(text, label_texts)
+        if output_hidden_states:
+            text_embedding, all_hidden_states = self.encoder(text, label_texts, output_hidden_states=True)
+        else:
+            text_embedding = self.encoder(text, label_texts)
+            all_hidden_states = None
         
         support_emb = text_embedding[:support_size]
         query_emb = text_embedding[support_size:]
@@ -45,5 +49,8 @@ class LaqdaModule(nn.Module):
             prototypes = original_prototypes
             acc = 0.0
             sampled_data = None
+            
+        if output_hidden_states:
+            return prototypes, query_emb, acc, original_prototypes, sampled_data, all_hidden_states
             
         return prototypes, query_emb, acc, original_prototypes, sampled_data

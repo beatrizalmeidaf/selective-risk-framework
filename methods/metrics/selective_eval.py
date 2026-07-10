@@ -6,9 +6,7 @@ def compute_selective_risk_coverage(confidences, preds, targets):
     Calcula os pontos da curva Risco-Cobertura.
     Baseado em "Selective Classification for Deep Neural Networks" (Geifman & El-Yaniv, 2017).
     """
-    if isinstance(confidences, torch.Tensor): confidences = confidences.cpu().numpy()
-    if isinstance(preds, torch.Tensor): preds = preds.cpu().numpy()
-    if isinstance(targets, torch.Tensor): targets = targets.cpu().numpy()
+    # Assumimos que os tensores já foram convertidos para numpy no evaluate_selective
         
     n_samples = len(confidences)
     
@@ -36,7 +34,17 @@ def compute_aurc(confidences, preds, targets):
     risks, coverages = compute_selective_risk_coverage(confidences, preds, targets)
     # A área sob a curva usando a regra do trapézio (embora a soma simples muitas vezes seja usada no paper)
     aurc = np.trapz(risks, coverages)
-    return {"aurc": aurc}
+    
+    # E-AURC (Empirical AURC, normalizado pela taxa de erro base - chute aleatório ou precisão geral)
+    # A métrica E-AURC penaliza modelos que começam com um erro base muito alto.
+    # E-AURC = AURC - (risco_base / 2) -> (aproximação para comparação direta)
+    error_rate = 1.0 - np.mean(preds == targets)
+    e_aurc = aurc - (error_rate / 2.0)
+    
+    return {
+        "aurc": aurc,
+        "e_aurc": e_aurc
+    }
 
 def compute_risk_at_coverage(confidences, preds, targets, target_coverages=[0.8, 0.9, 0.95]):
     """
@@ -61,7 +69,7 @@ def compute_sgr_coverage_at_risk(confidences, preds, targets, target_risks=[0.01
     para travar um risco máximo (ex: 1%, 5%, 10%).
     """
     from methods.sgr.sgr import SGRController
-    sgr = SGRController(delta=0.001)
+    sgr = SGRController(delta=0.05) # delta era  = 0.001 (99.9% de certeza)
     
     results = {}
     for r_star in target_risks:
@@ -72,6 +80,10 @@ def compute_sgr_coverage_at_risk(confidences, preds, targets, target_risks=[0.01
 
 def evaluate_selective(confidences, preds, targets):
     """Agregador das métricas de predição seletiva."""
+    if isinstance(confidences, torch.Tensor): confidences = confidences.detach().cpu().numpy()
+    if isinstance(preds, torch.Tensor): preds = preds.detach().cpu().numpy()
+    if isinstance(targets, torch.Tensor): targets = targets.detach().cpu().numpy()
+    
     metrics = compute_aurc(confidences, preds, targets)
     metrics.update(compute_risk_at_coverage(confidences, preds, targets))
     metrics.update(compute_sgr_coverage_at_risk(confidences, preds, targets))

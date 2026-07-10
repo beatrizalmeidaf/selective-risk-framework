@@ -46,16 +46,27 @@ class LabelAwareEncoder(nn.Module):
                     param.requires_grad = True
                     break
 
-    def forward(self, text: list, task_classes: list):
+    def forward(self, text: list, task_classes: list, output_hidden_states: bool = False):
         tokenizer_output = self.tokenizer(
             text, padding=True, truncation=True, max_length=250, return_tensors='pt'
         ).to(self.model.device)
         
-        outputs = self.model(**tokenizer_output)
+        outputs = self.model(**tokenizer_output, output_hidden_states=output_hidden_states)
         last_hidden_state = outputs.last_hidden_state
         
+        # Coleta os estados ocultos de todas as camadas (caso solicitado para X-Mahalanobis)
+        all_hidden_states = []
+        if output_hidden_states and hasattr(outputs, 'hidden_states'):
+            # O BERT retorna (embedding_layer, layer_1, ..., layer_N)
+            # Ignoramos a camada de embedding [0] e pegamos apenas o CLS token [:, 0, :]
+            all_hidden_states = [layer_out[:, 0, :] for layer_out in outputs.hidden_states[1:]]
+        
         if self.la == 0 or self.attention is None:
-            return last_hidden_state[:, 0, :]
+            final_emb = last_hidden_state[:, 0, :]
+            if output_hidden_states:
+                # O último layer já está em all_hidden_states[-1], mas para consistência:
+                return final_emb, tuple(all_hidden_states)
+            return final_emb
             
         task_labels_inputs = self.tokenizer(
             task_classes, return_tensors='pt', padding=True, truncation=True
@@ -82,4 +93,11 @@ class LabelAwareEncoder(nn.Module):
         attention_output = self.attention(dropped_output, extended_attention_mask)[0]
         residual_output = 0.1 * attention_output + 0.9 * connect_embeddings
         
-        return residual_output[:, 0, :]
+        final_emb = residual_output[:, 0, :]
+        
+        if output_hidden_states:
+            # Adicionamos a camada Label-Aware como a última camada do modelo
+            all_hidden_states.append(final_emb)
+            return final_emb, tuple(all_hidden_states)
+            
+        return final_emb
