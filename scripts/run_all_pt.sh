@@ -1,6 +1,7 @@
 #!/bin/bash
 # =========================================================================
 # Script Unificado PT: Avaliação de todos os algoritmos por 100 épocas
+# (Jobs Agrupados por Corpus com Retomada Automática)
 # =========================================================================
 
 cd "$(dirname "$0")/.." || exit 1
@@ -12,6 +13,7 @@ mkdir -p "$LOGS_DIR"
 
 EPOCHS=100
 KSHOTS=(1 5 10)
+FOLDS=("01" "02" "03" "04" "05")
 
 echo "=========================================================="
 echo "Iniciando Pipeline PT (${EPOCHS} épocas) - Datasets: ${BASE_DATASET_DIR}"
@@ -23,138 +25,189 @@ for CATEGORY in "$BASE_DATASET_DIR"/*; do
     for DATASET in "$CATEGORY"/*; do
       if [ -d "$DATASET/few_shot" ]; then
         CORPUS=$(basename "$DATASET")
+        DATA_DIR="$DATASET/few_shot"
         
-        for FOLD_DIR in "$DATASET/few_shot"/*; do
-          if [ -d "$FOLD_DIR" ]; then
-            FOLD=$(basename "$FOLD_DIR")
-            DATA_DIR="$DATASET/few_shot"
-            
-            for K in "${KSHOTS[@]}"; do
-                echo "--> Submetendo jobs para: ${CORPUS} | Fold ${FOLD} | K-shot: ${K}"
-                
-                # 1. Job SLURM — Baseline
-                BASELINE_SAVE="outputs/final_eval/${LANG_DIR}/baseline/${CORPUS}/fold_${FOLD}"
-                mkdir -p "$BASELINE_SAVE"
-                JOB_BASELINE=$(sbatch --parsable \
-                    --job-name="base_${CORPUS}_${FOLD}_${K}" \
-                    --output="${LOGS_DIR}/base_${CORPUS}_${FOLD}_${K}_%j.log" \
-                    --error="${LOGS_DIR}/base_${CORPUS}_${FOLD}_${K}_err_%j.log" \
-                    --time=08:00:00 \
-                    --partition=h100n3 \
-                    --gres=gpu:h100:1 \
-                    --wrap="
-                        . /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
-                        cd /home/user_beatrizalmeida/selective-risk-framework
-                        python -m methods.baselines.cli.train_baseline \\
-                            --dataset_dir '${DATA_DIR}' \\
-                            --fold '${FOLD}' \\
-                            --save_dir '${BASELINE_SAVE}' \\
-                            --epochs ${EPOCHS} \\
-                            --batch_size 16 \\
-                            --lr 2e-5 \\
-                            --kshot ${K}
-                    "
-                )
-                
-                # 2. Job SLURM — KNN-Contrastive
-                KNNCONT_SAVE="outputs/final_eval/${LANG_DIR}/knn_contrastive/${CORPUS}/fold_${FOLD}"
-                mkdir -p "$KNNCONT_SAVE"
-                JOB_KNNCONT=$(sbatch --parsable \
-                    --job-name="knnc_${CORPUS}_${FOLD}_${K}" \
-                    --output="${LOGS_DIR}/knnc_${CORPUS}_${FOLD}_${K}_%j.log" \
-                    --error="${LOGS_DIR}/knnc_${CORPUS}_${FOLD}_${K}_err_%j.log" \
-                    --time=08:00:00 \
-                    --partition=h100n3 \
-                    --gres=gpu:h100:1 \
-                    --wrap="
-                        . /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
-                        cd /home/user_beatrizalmeida/selective-risk-framework
-                        python -m methods.baselines.cli.train_knn_contrastive \\
-                            --dataset_dir '${DATA_DIR}' \\
-                            --fold '${FOLD}' \\
-                            --save_dir '${KNNCONT_SAVE}' \\
-                            --epochs ${EPOCHS} \\
-                            --batch_size 16 \\
-                            --lr 2e-5 \\
-                            --kshot ${K}
-                    "
-                )
+        echo "--> Submetendo jobs agregados para: ${CORPUS}"
+        
+        # 1. Job SLURM — Baseline
+        TMP_BASE=$(mktemp --suffix=.slurm)
+        cat <<EOF > "$TMP_BASE"
+#!/bin/bash
+#SBATCH --job-name=base_${CORPUS}
+#SBATCH --output=${LOGS_DIR}/base_${CORPUS}_%j.log
+#SBATCH --error=${LOGS_DIR}/base_${CORPUS}_err_%j.log
+#SBATCH --time=48:00:00
+#SBATCH --partition=h100n3
+#SBATCH --gres=gpu:h100:1
 
-                # 3. Job SLURM — LAQDA (Sem SGR)
-                LAQDA_SAVE="outputs/final_eval/${LANG_DIR}/laqda/${CORPUS}/fold_${FOLD}"
-                mkdir -p "$LAQDA_SAVE"
-                JOB_LAQDA=$(sbatch --parsable \
-                    --job-name="laq_${CORPUS}_${FOLD}_${K}" \
-                    --output="${LOGS_DIR}/laq_${CORPUS}_${FOLD}_${K}_%j.log" \
-                    --error="${LOGS_DIR}/laq_${CORPUS}_${FOLD}_${K}_err_%j.log" \
-                    --time=08:00:00 \
-                    --partition=h100n3 \
-                    --gres=gpu:h100:1 \
-                    --wrap="
-                        . /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
-                        cd /home/user_beatrizalmeida/selective-risk-framework
-                        python -m methods.laqda.cli.train \\
-                            --dataset_dir '${DATA_DIR}' \\
-                            --fold '${FOLD}' \\
-                            --save_dir '${LAQDA_SAVE}' \\
-                            --config configs/methods_config.yaml \\
-                            --epochs ${EPOCHS} \\
-                            --kshot ${K}
-                        
-                        if [ \$? -eq 0 ]; then
-                            python -m methods.laqda.cli.infer \\
-                                --dataset_dir '${DATA_DIR}' \\
-                                --fold '${FOLD}' \\
-                                --model_paths '${LAQDA_SAVE}/kshot_${K}/acc_best_model.pth' \\
-                                --output_dir '${LAQDA_SAVE}' \\
-                                --kshot ${K} \\
-                                --score_mode all
-                        fi
-                    "
-                )
+. /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
+cd /home/user_beatrizalmeida/selective-risk-framework
 
-                # 4. Job SLURM — LAQDA (Com SGR)
-                LAQDA_SGR_SAVE="outputs/final_eval/${LANG_DIR}/laqda_sgr/${CORPUS}/fold_${FOLD}"
-                mkdir -p "$LAQDA_SGR_SAVE"
-                JOB_LAQDA_SGR=$(sbatch --parsable \
-                    --job-name="sgr_${CORPUS}_${FOLD}_${K}" \
-                    --output="${LOGS_DIR}/sgr_${CORPUS}_${FOLD}_${K}_%j.log" \
-                    --error="${LOGS_DIR}/sgr_${CORPUS}_${FOLD}_${K}_err_%j.log" \
-                    --time=08:00:00 \
-                    --partition=h100n3 \
-                    --gres=gpu:h100:1 \
-                    --wrap="
-                        . /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
-                        cd /home/user_beatrizalmeida/selective-risk-framework
-                        python -m methods.laqda.cli.train \\
-                            --dataset_dir '${DATA_DIR}' \\
-                            --fold '${FOLD}' \\
-                            --save_dir '${LAQDA_SGR_SAVE}' \\
-                            --config configs/methods_config.yaml \\
-                            --epochs ${EPOCHS} \\
-                            --kshot ${K} \\
-                            --use_sgr
-                        
-                        if [ \$? -eq 0 ]; then
-                            python -m methods.laqda.cli.infer \\
-                                --dataset_dir '${DATA_DIR}' \\
-                                --fold '${FOLD}' \\
-                                --model_paths '${LAQDA_SGR_SAVE}/kshot_${K}/acc_best_model.pth' \\
-                                --output_dir '${LAQDA_SGR_SAVE}' \\
-                                --kshot ${K} \\
-                                --score_mode all
-                        fi
-                    "
-                )
-            done
-          fi
-        done
+for FOLD in ${FOLDS[@]}; do
+    for K in ${KSHOTS[@]}; do
+        SAVE_DIR="outputs/final_eval/${LANG_DIR}/baseline/${CORPUS}/fold_\${FOLD}"
+        mkdir -p "\${SAVE_DIR}"
+        
+        if [ -f "\${SAVE_DIR}/kshot_\${K}/test_final_metrics_report.json" ]; then
+            echo "✔ Baseline | Fold \${FOLD} | K-shot \${K} já treinado e avaliado. Pulando..."
+            continue
+        fi
+        
+        echo "Executando Baseline | Fold \${FOLD} | K-shot \${K}..."
+        python -m methods.baselines.cli.train_baseline \\
+            --dataset_dir "${DATA_DIR}" \\
+            --fold "\${FOLD}" \\
+            --save_dir "\${SAVE_DIR}" \\
+            --epochs ${EPOCHS} \\
+            --batch_size 16 \\
+            --lr 2e-5 \\
+            --kshot "\${K}"
+    done
+done
+EOF
+        sbatch "$TMP_BASE"
+        
+        # 2. Job SLURM — KNN-Contrastive
+        TMP_KNNC=$(mktemp --suffix=.slurm)
+        cat <<EOF > "$TMP_KNNC"
+#!/bin/bash
+#SBATCH --job-name=knnc_${CORPUS}
+#SBATCH --output=${LOGS_DIR}/knnc_${CORPUS}_%j.log
+#SBATCH --error=${LOGS_DIR}/knnc_${CORPUS}_err_%j.log
+#SBATCH --time=48:00:00
+#SBATCH --partition=h100n3
+#SBATCH --gres=gpu:h100:1
+
+. /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
+cd /home/user_beatrizalmeida/selective-risk-framework
+
+for FOLD in ${FOLDS[@]}; do
+    for K in ${KSHOTS[@]}; do
+        SAVE_DIR="outputs/final_eval/${LANG_DIR}/knn_contrastive/${CORPUS}/fold_\${FOLD}"
+        mkdir -p "\${SAVE_DIR}"
+        
+        if [ -f "\${SAVE_DIR}/kshot_\${K}/test_final_metrics_report.json" ]; then
+            echo "✔ KNN-Contrastive | Fold \${FOLD} | K-shot \${K} já treinado e avaliado. Pulando..."
+            continue
+        fi
+        
+        echo "Executando KNN-Contrastive | Fold \${FOLD} | K-shot \${K}..."
+        python -m methods.baselines.cli.train_knn_contrastive \\
+            --dataset_dir "${DATA_DIR}" \\
+            --fold "\${FOLD}" \\
+            --save_dir "\${SAVE_DIR}" \\
+            --epochs ${EPOCHS} \\
+            --batch_size 16 \\
+            --lr 2e-5 \\
+            --kshot "\${K}"
+    done
+done
+EOF
+        sbatch "$TMP_KNNC"
+
+        # 3. Job SLURM — LAQDA (Sem SGR)
+        TMP_LAQDA=$(mktemp --suffix=.slurm)
+        cat <<EOF > "$TMP_LAQDA"
+#!/bin/bash
+#SBATCH --job-name=laq_${CORPUS}
+#SBATCH --output=${LOGS_DIR}/laq_${CORPUS}_%j.log
+#SBATCH --error=${LOGS_DIR}/laq_${CORPUS}_err_%j.log
+#SBATCH --time=48:00:00
+#SBATCH --partition=h100n3
+#SBATCH --gres=gpu:h100:1
+
+. /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
+cd /home/user_beatrizalmeida/selective-risk-framework
+
+for FOLD in ${FOLDS[@]}; do
+    for K in ${KSHOTS[@]}; do
+        SAVE_DIR="outputs/final_eval/${LANG_DIR}/laqda/${CORPUS}/fold_\${FOLD}"
+        mkdir -p "\${SAVE_DIR}"
+        
+        if [ -f "\${SAVE_DIR}/kshot_\${K}/test_final_metrics_report.json" ]; then
+            echo "✔ LAQDA | Fold \${FOLD} | K-shot \${K} já treinado e avaliado. Pulando..."
+            continue
+        fi
+        
+        echo "Executando LAQDA | Fold \${FOLD} | K-shot \${K}..."
+        python -m methods.laqda.cli.train \\
+            --dataset_dir "${DATA_DIR}" \\
+            --fold "\${FOLD}" \\
+            --save_dir "\${SAVE_DIR}" \\
+            --config configs/methods_config.yaml \\
+            --epochs ${EPOCHS} \\
+            --kshot "\${K}"
+        
+        if [ \$? -eq 0 ]; then
+            python -m methods.laqda.cli.infer \\
+                --dataset_dir "${DATA_DIR}" \\
+                --fold "\${FOLD}" \\
+                --model_paths "\${SAVE_DIR}/kshot_\${K}/acc_best_model.pth" \\
+                --output_dir "\${SAVE_DIR}" \\
+                --kshot "\${K}" \\
+                --score_mode all
+        fi
+    done
+done
+EOF
+        sbatch "$TMP_LAQDA"
+
+        # 4. Job SLURM — LAQDA (Com SGR)
+        TMP_SGR=$(mktemp --suffix=.slurm)
+        cat <<EOF > "$TMP_SGR"
+#!/bin/bash
+#SBATCH --job-name=sgr_${CORPUS}
+#SBATCH --output=${LOGS_DIR}/sgr_${CORPUS}_%j.log
+#SBATCH --error=${LOGS_DIR}/sgr_${CORPUS}_err_%j.log
+#SBATCH --time=48:00:00
+#SBATCH --partition=h100n3
+#SBATCH --gres=gpu:h100:1
+
+. /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
+cd /home/user_beatrizalmeida/selective-risk-framework
+
+for FOLD in ${FOLDS[@]}; do
+    for K in ${KSHOTS[@]}; do
+        SAVE_DIR="outputs/final_eval/${LANG_DIR}/laqda_sgr/${CORPUS}/fold_\${FOLD}"
+        mkdir -p "\${SAVE_DIR}"
+        
+        if [ -f "\${SAVE_DIR}/kshot_\${K}/test_final_metrics_report.json" ]; then
+            echo "✔ LAQDA+SGR | Fold \${FOLD} | K-shot \${K} já treinado e avaliado. Pulando..."
+            continue
+        fi
+        
+        echo "Executando LAQDA+SGR | Fold \${FOLD} | K-shot \${K}..."
+        python -m methods.laqda.cli.train \\
+            --dataset_dir "${DATA_DIR}" \\
+            --fold "\${FOLD}" \\
+            --save_dir "\${SAVE_DIR}" \\
+            --config configs/methods_config.yaml \\
+            --epochs ${EPOCHS} \\
+            --kshot "\${K}" \\
+            --use_sgr
+        
+        if [ \$? -eq 0 ]; then
+            python -m methods.laqda.cli.infer \\
+                --dataset_dir "${DATA_DIR}" \\
+                --fold "\${FOLD}" \\
+                --model_paths "\${SAVE_DIR}/kshot_\${K}/acc_best_model.pth" \\
+                --output_dir "\${SAVE_DIR}" \\
+                --kshot "\${K}" \\
+                --score_mode all
+        fi
+    done
+done
+EOF
+        sbatch "$TMP_SGR"
+        
+        # Limpa os temporários
+        rm -f "$TMP_BASE" "$TMP_KNNC" "$TMP_LAQDA" "$TMP_SGR"
       fi
     done
   fi
 done
 
 echo "=========================================================="
-echo "Todos os jobs PT submetidos em paralelo! Acompanhe:"
+echo "Todos os jobs agregados PT submetidos! Acompanhe:"
 echo "  squeue -u \$USER"
 echo "=========================================================="
