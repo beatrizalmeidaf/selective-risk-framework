@@ -1,15 +1,15 @@
 import numpy as np
 import torch
 from typing import List, Iterable
-from data.samplers.base_sampler import BaseFrameworkSampler
+from torch.utils.data import Sampler
 
-class EpisodicKShotSampler(BaseFrameworkSampler):
+class EpisodicKShotSampler(Sampler):
     """
     Sampler episódico para few-shot learning usado no LAQDA.
     Gera tarefas (episodes) contendo um conjunto de suporte e um de consulta.
     """
     def __init__(self, dataset, episodes_per_epoch: int = 100, k: int = 2, n: int = 5, q: int = 25, num_tasks: int = 1, fixed_tasks: List[Iterable[int]] = None, seed: int = None):
-        super().__init__(dataset)
+        self.dataset = dataset
         if not hasattr(dataset, 'df'):
             raise ValueError("O dataset fornecido deve conter o atributo 'df' (Dataframe Pandas).")
 
