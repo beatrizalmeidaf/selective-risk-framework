@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from data.datamodule import StandardDataModule
@@ -27,6 +28,9 @@ def get_parser():
     parser.add_argument('--lr', type=float, default=2e-5, help='Taxa de aprendizado')
     parser.add_argument('--kshot', type=int, default=None, help='Número de shots por classe (opcional, sobrescreve config)')
     parser.add_argument('--patience', type=int, default=20, help='Patience para Early Stopping')
+    parser.add_argument('--num_freeze', type=int, default=6, help='Número de camadas do encoder para congelar')
+    parser.add_argument('--weight_decay', type=float, default=1e-2, help='Weight decay para o otimizador AdamW')
+    parser.add_argument('--dropout', type=float, default=0.1, help='Taxa de dropout na camada de classificação')
     return parser
 
 def collate_fn(batch):
@@ -70,10 +74,11 @@ def main():
 
     # 3. Modelo e Otimizador
     num_classes = len(labels_dict)
-    model = BaselineClassifier(global_model_name, num_classes)
+    model = BaselineClassifier(global_model_name, num_classes, num_freeze=args.num_freeze, dropout=args.dropout)
     model.to(device_str)
     
-    optimizer = AdamW(model.parameters(), lr=args.lr)
+    optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=5)
     loss_fn = nn.CrossEntropyLoss(ignore_index=-1)
     
     os.makedirs(args.save_dir, exist_ok=True)
@@ -142,8 +147,12 @@ def main():
                 torch.save(torch.cat(all_features), os.path.join(args.save_dir, 'val_features.pt'))
                 torch.save(torch.cat(all_logits), os.path.join(args.save_dir, 'val_logits.pt'))
                 torch.save(torch.cat(all_labels), os.path.join(args.save_dir, 'val_labels.pt'))
-            else:
                 epochs_no_improve += 1
+                
+            # Atualizar o Learning Rate Scheduler
+            scheduler.step(val_acc)
+            current_lr = optimizer.param_groups[0]['lr']
+            print(f"Current LR: {current_lr:.2e}")
 
             # Padrão Ouro de Avaliação
             reporter = MetricsReporter(save_dir=args.save_dir)
@@ -229,9 +238,7 @@ def main():
             
         knn = KNNScorer(k=knn_k, metric='euclidean')
         knn.fit(train_features_t, train_labels_t)
-        
-        knn_cont = KNNScorer(k=knn_k, metric='cosine')
-        knn_cont.fit(train_features_t, train_labels_t)
+
         
         energy_scorer = EnergyScorer(temperature=energy_temp)
         
@@ -302,18 +309,7 @@ def main():
             model=model,
             prefix="test_final_knn"
         )
-        
-        # 5. Avaliar KNN Contrastivo
-        knn_cont_conf = knn_cont.compute_score(test_features_t)
-        reporter.generate_report(
-            confidences=knn_cont_conf,
-            preds=preds,
-            targets=test_labels_t,
-            id_scores=knn_cont_conf[mask_id],
-            ood_scores=knn_cont_conf[mask_ood],
-            model=model,
-            prefix="test_final_knn_contrastive"
-        )
+
         
         # 6. Avaliar GradNorm
         gradnorm_conf = gradnorm_scorer.compute_score(test_features_t, test_logits_t)
@@ -352,6 +348,11 @@ def main():
         )
         
         print("Avaliação de Teste com todos os Scorers OOD concluída!")
+
+        # Clean up the large model checkpoint to save disk space
+        model_path = os.path.join(args.save_dir, 'best_baseline.pth')
+        if os.path.exists(model_path):
+            os.remove(model_path)
 
 if __name__ == "__main__":
     main()
