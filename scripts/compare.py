@@ -39,7 +39,6 @@ METHODS = [
     ("base_energy",     "baseline",  "energy"),
     ("base_mahal",      "baseline",  "mahalanobis"),
     ("base_knn",        "baseline",  "knn"),
-    ("base_knn_c",      "baseline",  "knn_contrastive"),
     ("base_conjnorm",   "baseline",  "sota_conjnorm"),
     ("base_gradnorm",   "baseline",  "sota_gradnorm"),
     ("base_react",      "baseline",  "sota_react"),
@@ -47,12 +46,7 @@ METHODS = [
     ("laqda_margin",    "laqda",     "margin"),
     ("laqda_mcdrop",    "laqda",     "mcdropout"),
     ("laqda_tempscale", "laqda",     "tempscale"),
-    ("laqda_sgr",       "laqda_sgr", ""),
-    ("laqda_sgr_marg",  "laqda_sgr", "margin"),
-    ("laqda_sgr_mc",    "laqda_sgr", "mcdropout"),
-    ("laqda_sgr_temp",  "laqda_sgr", "tempscale"),
     ("laqda_xmaha",     "laqda",     "xmaha"),
-    ("laqda_sgr_xmaha", "laqda_sgr", "xmaha"),
 ]
 
 KSHOTS   = ["kshot_1", "kshot_5", "kshot_10"]
@@ -99,7 +93,8 @@ def load_report_aggregated(base_path: str, lang_dir: str, folder: str, corpus: s
     metrics = {
         "accuracy": [], "f1_macro": [], "aurc": [], "e_aurc": [], 
         "auroc": [], "sgr_coverage_at_risk_1": [], "sgr_coverage_at_risk_5": [],
-        "sgr_coverage_at_risk_10": [], "fpr_at_95": [], "ece": []
+        "sgr_coverage_at_risk_10": [], "fpr_at_95": [], "ece": [],
+        "sgr_accepted_accuracy": [], "sgr_abstention_rate": []
     }
     
     folds_found = 0
@@ -152,6 +147,8 @@ def collect_rows_aggregated(base_path: str, lang_dir: str, corpus: str, kshot: s
             "cov10":   d.get("sgr_coverage_at_risk_10"),
             "fpr95":   d.get("fpr_at_95"),
             "ece":     d.get("ece"),
+            "sgr_acc": d.get("sgr_accepted_accuracy"),
+            "sgr_abs": d.get("sgr_abstention_rate"),
         })
         
     def sort_func(x):
@@ -175,8 +172,6 @@ def fmt_agg(v_tuple, width=15):
 
 def marker(folder: str) -> str:
     """Símbolo de destaque por tipo de método."""
-    if "laqda_sgr" in folder:
-        return "◆"
     if "laqda" in folder:
         return "★"
     return " "
@@ -232,7 +227,11 @@ def save_csv(all_rows: list, path: str):
     flat_rows = []
     for r in all_rows:
         flat = {"kshot": r["kshot"], "label": r["label"], "folder": r["folder"], "folds": r["folds"]}
-        for k in ["acc", "f1", "aurc", "e_aurc", "auroc", "cov1", "cov5", "cov10", "fpr95", "ece"]:
+        headers = [
+            "Metodo", "Folds", "Acc", "F1", "AURC", "EAURC", 
+            "AUROC", "Cov@1", "Cov@5", "Cov@10", "FPR95", "ECE", "SGR_Acc", "SGR_Abs"
+        ]
+        for k in ["acc", "f1", "aurc", "e_aurc", "auroc", "cov1", "cov5", "cov10", "fpr95", "ece", "sgr_acc", "sgr_abs"]:
             if r.get(k) and r[k][0] is not None:
                 flat[f"{k}_mean"] = r[k][0]
                 flat[f"{k}_std"] = r[k][1]
