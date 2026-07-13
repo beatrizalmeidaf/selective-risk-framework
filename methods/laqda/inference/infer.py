@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from collections import Counter, defaultdict
 from ..modules.laqda_module import LaqdaModule
+from ..scoring import compute_prototype_scores
 
 
 class LaqdaInferencer:
@@ -82,8 +83,60 @@ class LaqdaInferencer:
                 selected = sentences * (kshot // len(sentences)) + sentences[:kshot % len(sentences)]
                 
             fixed_support_text.extend(selected)
-            
+
         return fixed_support_text
+
+    def _fit_and_apply_sgr(self, val_confidences, val_preds, val_targets,
+                            test_confidences, test_preds, test_targets, id_mask, ood_mask):
+        """
+        Calibra thresholds SGR (risco 10/15/20/25%) em confidences/preds/targets de
+        VALIDAÇÃO (estritamente ID) e aplica ao teste (ID+OOD). Compartilhado entre
+        todas as estratégias de score para não duplicar o loop de calibração em cada
+        evaluate_ood_*.
+
+        IMPORTANTE: cada estratégia deve passar confidences calculadas com SEU PRÓPRIO
+        score (margin, mcdropout, tempscale, xmaha, ...) tanto no val quanto no teste.
+        Um threshold calibrado numa escala de score (ex: cosseno x tau) não transfere
+        para outra escala (ex: softmax calibrado, margem, Mahalanobis) — ver o aviso em
+        methods/laqda/scoring.py.
+        """
+        from methods.sgr.sgr import SGRController
+        sgr = SGRController(delta=0.05)
+        sgr_extras = {}
+
+        for risk_pct, r_star in [(10, 0.10), (15, 0.15), (20, 0.20), (25, 0.25)]:
+            theta, bound, cov_val = sgr.fit(val_confidences, val_preds, val_targets, r_star=r_star)
+            if theta == float('inf'):
+                print(f"  [Info] SGR r*={r_star:.2f}: nenhum threshold viável (bound acima do alvo).")
+                continue
+
+            abstained = (test_confidences < theta)
+            abstention_rate = abstained.float().mean().item()
+
+            accepted_mask = ~abstained
+            if accepted_mask.sum() > 0:
+                acc_accepted = (test_preds[accepted_mask] == test_targets[accepted_mask]).float().mean().item()
+            else:
+                acc_accepted = 0.0
+
+            # Decomposição da abstenção: cobertura sobre ID (quanto do serviço é
+            # mantido) e rejeição sobre OOD (proteção emergente).
+            id_coverage = (~abstained[id_mask]).float().mean().item() if id_mask.sum() > 0 else 0.0
+            ood_rejection = abstained[ood_mask].float().mean().item() if ood_mask.sum() > 0 else 0.0
+
+            prefix = "" if risk_pct == 10 else f"_{risk_pct}"
+            sgr_extras.update({
+                f"sgr_applied_threshold{prefix}": theta,
+                f"sgr_val_coverage{prefix}": cov_val,
+                f"sgr_abstention_rate{prefix}": abstention_rate,
+                f"sgr_accepted_accuracy{prefix}": acc_accepted,
+                f"sgr_id_coverage{prefix}": id_coverage,
+                f"sgr_ood_rejection_rate{prefix}": ood_rejection
+            })
+            print(f"  [SGR] r*={r_star:.2f} -> theta={theta:.4f} | "
+                  f"cobertura val={cov_val:.4f} | abstenção teste={abstention_rate:.4f}")
+
+        return sgr_extras
 
     def predict_ensemble(self, dataset, support_text: list, labels_dict: dict, batch_size=32):
         id2label = {v: k for k, v in labels_dict.items()}
@@ -105,12 +158,8 @@ class LaqdaInferencer:
                     prototypes = model_outputs[0]
                     query_embeddings = model_outputs[1]
                     
-                    tau = 15.0
-                    q_norm = F.normalize(query_embeddings, p=2, dim=1)
-                    p_norm = F.normalize(prototypes, p=2, dim=1)
-                    sim = torch.mm(q_norm, p_norm.t())
-                    dists = -sim * tau
-                    preds_idx = torch.argmin(dists, dim=1).cpu().numpy()
+                    _, preds_t, _, _ = compute_prototype_scores(query_embeddings, prototypes)
+                    preds_idx = preds_t.cpu().numpy()
                     
                     for idx in preds_idx:
                         fold_predictions.append(id2label[idx])
@@ -153,12 +202,10 @@ class LaqdaInferencer:
                 prototypes = model_outputs[0]
                 query_embeddings = model_outputs[1]
                 
-                tau = 15.0
-                q_norm = F.normalize(query_embeddings, p=2, dim=1)
-                p_norm = F.normalize(prototypes, p=2, dim=1)
-                sim = torch.mm(q_norm, p_norm.t())
-                dists = -sim * tau
-                
+                # Score canônico compartilhado com a calibração do SGR
+                # (methods/laqda/scoring.py) — mesma métrica, normalização e tau.
+                dists, _, _, _ = compute_prototype_scores(query_embeddings, prototypes)
+
                 all_dists.append(dists.cpu())
                 all_targets.append(labels.cpu())
                 
@@ -176,8 +223,11 @@ class LaqdaInferencer:
         id_scores = confidences[id_mask]
         ood_scores = confidences[ood_mask]
         
-        # Verificar se modelo tem limiares SGR travados (LAQDA com SGR)
+        # id_only_accuracy é calculado centralmente em compute_accuracy_f1
+        # (methods/metrics/classification.py) a partir de targets/preds.
         sgr_extras = {}
+
+        # Verificar se modelo tem limiares SGR travados (LAQDA com SGR)
         thresholds_to_check = [
             (10, 'sgr_threshold_10'),
             (15, 'sgr_threshold_15'),
@@ -197,11 +247,18 @@ class LaqdaInferencer:
                 else:
                     acc_accepted = 0.0
                     
+                # Decomposição da abstenção: cobertura sobre ID (quanto do serviço
+                # é mantido) e rejeição sobre OOD (proteção emergente).
+                id_coverage = (~abstained[id_mask]).float().mean().item() if id_mask.sum() > 0 else 0.0
+                ood_rejection = abstained[ood_mask].float().mean().item() if ood_mask.sum() > 0 else 0.0
+
                 prefix = "" if risk_pct == 10 else f"_{risk_pct}"
                 sgr_extras.update({
                     f"sgr_applied_threshold{prefix}": sgr_th,
                     f"sgr_abstention_rate{prefix}": abstention_rate,
-                    f"sgr_accepted_accuracy{prefix}": acc_accepted
+                    f"sgr_accepted_accuracy{prefix}": acc_accepted,
+                    f"sgr_id_coverage{prefix}": id_coverage,
+                    f"sgr_ood_rejection_rate{prefix}": ood_rejection
                 })
         
         from methods.metrics.reporter import MetricsReporter
@@ -224,64 +281,75 @@ class LaqdaInferencer:
     # Quanto maior a margem entre o 1º e 2º protótipo mais próximo, maior a
     # confiança: o modelo está claramente "preferindo" uma única classe.
     # =========================================================================
-    def evaluate_ood_margin(self, dataset, support_text: list, labels_dict: dict, batch_size=32, save_dir='./results'):
+    def evaluate_ood_margin(self, dataset, support_text: list, labels_dict: dict,
+                             val_dataset=None, batch_size=32, save_dir='./results'):
         id2label = {v: k for k, v in labels_dict.items()}
         label_text_list = [id2label[i] for i in range(len(labels_dict))]
-        
+
         def collate_fn(batch):
             texts = [item['text'] for item in batch]
             labels = [item['class_id'] for item in batch]
             return texts, torch.tensor(labels, dtype=torch.long)
-            
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-        
-        all_sorted_dists = []
-        all_sorted_idx = []
-        all_targets = []
-        
+
         model = self.models[0]
+        kshot = self.config.get('sampler', {}).get('kshot', 5)
+
+        def _score_split(dl):
+            """Calcula o score MARGIN (2ª menor dist - menor dist) para um split."""
+            split_preds, split_confidences, split_targets = [], [], []
+            with torch.no_grad():
+                for texts, labels in tqdm(dl):
+                    input_text = support_text + list(texts)
+                    model_outputs = model(input_text, label_text_list, kshot=kshot)
+                    prototypes = model_outputs[0]
+                    query_embeddings = model_outputs[1]
+
+                    # Mesmo score canônico do DEFAULT (methods/laqda/scoring.py)
+                    dists, _, _, _ = compute_prototype_scores(query_embeddings, prototypes)
+
+                    # Ordena distâncias em ordem crescente (1º = mais próximo)
+                    sorted_dists, sorted_idx = torch.sort(dists, dim=1)
+                    min_dists = sorted_dists[:, 0]
+                    preds = sorted_idx[:, 0]
+
+                    if sorted_dists.shape[1] >= 2:
+                        # Margem: quanto maior, mais "isolada" está a predição no espaço de embeddings
+                        second_dists = sorted_dists[:, 1]
+                        confidences = second_dists - min_dists
+                    else:
+                        # Fallback para caso binário com apenas 1 classe (edge case)
+                        confidences = -min_dists
+
+                    split_preds.append(preds.cpu())
+                    split_confidences.append(confidences.cpu())
+                    split_targets.append(labels.cpu())
+            return torch.cat(split_preds), torch.cat(split_confidences), torch.cat(split_targets)
+
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
         print("Avaliando OOD metrics — Estratégia: Distance Margin (test_final_margin)...")
-        
-        with torch.no_grad():
-            for texts, labels in tqdm(dataloader):
-                input_text = support_text + list(texts)
-                kshot = self.config.get('sampler', {}).get('kshot', 5)
-                model_outputs = model(input_text, label_text_list, kshot=kshot)
-                prototypes = model_outputs[0]
-                query_embeddings = model_outputs[1]
-                
-                tau = 15.0
-                q_norm = F.normalize(query_embeddings, p=2, dim=1)
-                p_norm = F.normalize(prototypes, p=2, dim=1)
-                sim = torch.mm(q_norm, p_norm.t())
-                dists = -sim * tau  # menor dist = maior similaridade
-
-                # Ordena distâncias em ordem crescente (1º = mais próximo)
-                sorted_dists, sorted_idx = torch.sort(dists, dim=1)
-                all_sorted_dists.append(sorted_dists.cpu())
-                all_sorted_idx.append(sorted_idx.cpu())
-                all_targets.append(labels.cpu())
-
-        all_sorted_dists_t = torch.cat(all_sorted_dists)
-        all_sorted_idx_t = torch.cat(all_sorted_idx)
-        all_targets_t = torch.cat(all_targets)
-
-        min_dists = all_sorted_dists_t[:, 0]
-        preds = all_sorted_idx_t[:, 0]
-
-        if all_sorted_dists_t.shape[1] >= 2:
-            second_dists = all_sorted_dists_t[:, 1]
-            # Margem: quanto maior, mais "isolada" está a predição no espaço de embeddings
-            # Usamos o negativo da dist mínima + a margem para manter escala consistente
-            confidences = second_dists - min_dists
-        else:
-            # Fallback para caso binário com apenas 1 classe (edge case)
-            confidences = -min_dists
+        preds, confidences, all_targets_t = _score_split(dataloader)
 
         id_mask = all_targets_t != -1
         ood_mask = all_targets_t == -1
         id_scores = confidences[id_mask]
         ood_scores = confidences[ood_mask]
+
+        # SGR próprio do MARGIN: a margem (2ª menor dist - menor dist) está numa escala
+        # diferente do score DEFAULT (-min_dist), então os thresholds do modelo (buffers)
+        # não transferem — calibramos aqui no val set (só ID), usando este mesmo score.
+        sgr_extras = {}
+        if val_dataset is not None:
+            print("Distance Margin: calibrando thresholds SGR no validation set...")
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+            val_preds, val_confidences, val_targets_t = _score_split(val_loader)
+            val_id_mask = val_targets_t != -1
+
+            sgr_extras.update(self._fit_and_apply_sgr(
+                val_confidences[val_id_mask], val_preds[val_id_mask], val_targets_t[val_id_mask],
+                confidences, preds, all_targets_t, id_mask, ood_mask
+            ))
+        else:
+            print("  [Aviso] val_dataset não fornecido — SGR não aplicado ao Distance Margin.")
 
         from methods.metrics.reporter import MetricsReporter
         reporter = MetricsReporter(save_dir=save_dir)
@@ -293,6 +361,7 @@ class LaqdaInferencer:
             ood_scores=ood_scores,
             model=model,
             prefix="test_final_margin",
+            **sgr_extras
         )
         print(f"Relatório test_final_margin_metrics_report.json salvo em {save_dir}")
 
@@ -304,84 +373,89 @@ class LaqdaInferencer:
     # Captura incerteza epistêmica (incerteza do modelo, não dos dados).
     # =========================================================================
     def evaluate_ood_mc_dropout(self, dataset, support_text: list, labels_dict: dict,
-                                 batch_size=32, save_dir='./results', n_passes: int = 20):
+                                 val_dataset=None, batch_size=32, save_dir='./results', n_passes: int = 20):
         id2label = {v: k for k, v in labels_dict.items()}
         label_text_list = [id2label[i] for i in range(len(labels_dict))]
-        
+
         def collate_fn(batch):
             texts = [item['text'] for item in batch]
             labels = [item['class_id'] for item in batch]
             return texts, torch.tensor(labels, dtype=torch.long)
-            
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-        
+
         model = self.models[0]
-        
-        # Ativar modo treino APENAS no encoder para manter dropout ativo
-        # (o sampler transdutivo fica desativado por estar em modo eval no laqda_module)
-        model.train()
-        
-        print(f"Avaliando OOD metrics — Estratégia: MC Dropout ({n_passes} passes) (test_final_mcdropout)...")
-        
-        all_mean_sims = []
-        all_var_sims = []
-        all_preds = []
-        all_targets = []
-        
         kshot = self.config.get('sampler', {}).get('kshot', 5)
-        tau = 15.0
-        
-        with torch.no_grad():
-            for texts, labels in tqdm(dataloader):
-                input_text = support_text + list(texts)
-                
-                # Múltiplos passes estocásticos com dropout ativo
-                batch_sims = []  # [n_passes, batch_size, n_classes]
-                for _ in range(n_passes):
-                    model_outputs = model(input_text, label_text_list, kshot=kshot)
-                    prototypes = model_outputs[0]
-                    query_embeddings = model_outputs[1]
-                    
-                    q_norm = F.normalize(query_embeddings, p=2, dim=1)
-                    p_norm = F.normalize(prototypes, p=2, dim=1)
-                    sim = torch.mm(q_norm, p_norm.t())  # [batch_size, n_classes]
-                    batch_sims.append(sim.cpu())
-                
-                batch_sims_t = torch.stack(batch_sims)  # [n_passes, batch_size, n_classes]
-                
-                # Média e variância por classe ao longo dos N passes
-                mean_sim = batch_sims_t.mean(dim=0)   # [batch_size, n_classes]
-                var_sim = batch_sims_t.var(dim=0)      # [batch_size, n_classes]
-                
-                # Predição pela média das similaridades
-                preds_idx = torch.argmax(mean_sim, dim=1)
-                
-                # Score de confiança:
-                # - Pega a similaridade média da classe predita (maior = mais confiante)
-                # - Subtrai a variância da classe predita (maior variância = menos confiante)
-                mean_pred_sim = mean_sim[torch.arange(len(preds_idx)), preds_idx]
-                var_pred_sim = var_sim[torch.arange(len(preds_idx)), preds_idx]
-                confidence = mean_pred_sim - var_pred_sim
-                
-                all_mean_sims.append(mean_pred_sim)
-                all_var_sims.append(var_pred_sim)
-                all_preds.append(preds_idx)
-                all_targets.append(labels.cpu())
-        
-        # Voltar para modo eval após passes MC
-        model.eval()
-        
-        all_preds_t = torch.cat(all_preds)
-        all_targets_t = torch.cat(all_targets)
-        mean_sims_t = torch.cat(all_mean_sims)
-        var_sims_t = torch.cat(all_var_sims)
-        confidences = mean_sims_t - var_sims_t
-        
+
+        def _score_split(dl):
+            """Calcula o score MC Dropout (mean_sim - var_sim, N passes) para um split."""
+            split_preds, split_confidences, split_targets = [], [], []
+            # Ativar modo treino APENAS no encoder para manter dropout ativo
+            # (o sampler transdutivo fica desativado por estar em modo eval no laqda_module)
+            model.train()
+            with torch.no_grad():
+                for texts, labels in tqdm(dl):
+                    input_text = support_text + list(texts)
+
+                    # Múltiplos passes estocásticos com dropout ativo
+                    batch_sims = []  # [n_passes, batch_size, n_classes]
+                    for _ in range(n_passes):
+                        model_outputs = model(input_text, label_text_list, kshot=kshot)
+                        prototypes = model_outputs[0]
+                        query_embeddings = model_outputs[1]
+
+                        q_norm = F.normalize(query_embeddings, p=2, dim=1)
+                        p_norm = F.normalize(prototypes, p=2, dim=1)
+                        sim = torch.mm(q_norm, p_norm.t())  # [batch_size, n_classes]
+                        batch_sims.append(sim.cpu())
+
+                    batch_sims_t = torch.stack(batch_sims)  # [n_passes, batch_size, n_classes]
+
+                    # Média e variância por classe ao longo dos N passes
+                    mean_sim = batch_sims_t.mean(dim=0)   # [batch_size, n_classes]
+                    var_sim = batch_sims_t.var(dim=0)      # [batch_size, n_classes]
+
+                    # Predição pela média das similaridades
+                    preds_idx = torch.argmax(mean_sim, dim=1)
+
+                    # Score de confiança:
+                    # - Pega a similaridade média da classe predita (maior = mais confiante)
+                    # - Subtrai a variância da classe predita (maior variância = menos confiante)
+                    mean_pred_sim = mean_sim[torch.arange(len(preds_idx)), preds_idx]
+                    var_pred_sim = var_sim[torch.arange(len(preds_idx)), preds_idx]
+                    confidence = mean_pred_sim - var_pred_sim
+
+                    split_preds.append(preds_idx)
+                    split_confidences.append(confidence)
+                    split_targets.append(labels.cpu())
+            # Voltar para modo eval após os passes MC
+            model.eval()
+            return torch.cat(split_preds), torch.cat(split_confidences), torch.cat(split_targets)
+
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+        print(f"Avaliando OOD metrics — Estratégia: MC Dropout ({n_passes} passes) (test_final_mcdropout)...")
+        all_preds_t, confidences, all_targets_t = _score_split(dataloader)
+
         id_mask = all_targets_t != -1
         ood_mask = all_targets_t == -1
         id_scores = confidences[id_mask]
         ood_scores = confidences[ood_mask]
-        
+
+        # SGR próprio do MC Dropout: mean_sim - var_sim está numa escala diferente do
+        # score DEFAULT (-min_dist x tau), então os thresholds do modelo (buffers) não
+        # transferem — calibramos aqui no val set (só ID), usando este mesmo score.
+        sgr_extras = {}
+        if val_dataset is not None:
+            print("MC Dropout: calibrando thresholds SGR no validation set...")
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+            val_preds, val_confidences, val_targets_t = _score_split(val_loader)
+            val_id_mask = val_targets_t != -1
+
+            sgr_extras.update(self._fit_and_apply_sgr(
+                val_confidences[val_id_mask], val_preds[val_id_mask], val_targets_t[val_id_mask],
+                confidences, all_preds_t, all_targets_t, id_mask, ood_mask
+            ))
+        else:
+            print("  [Aviso] val_dataset não fornecido — SGR não aplicado ao MC Dropout.")
+
         from methods.metrics.reporter import MetricsReporter
         reporter = MetricsReporter(save_dir=save_dir)
         reporter.generate_report(
@@ -393,6 +467,7 @@ class LaqdaInferencer:
             model=model,
             prefix="test_final_mcdropout",
             mc_n_passes=n_passes,
+            **sgr_extras
         )
         print(f"Relatório test_final_mcdropout_metrics_report.json salvo em {save_dir}")
 
@@ -417,6 +492,7 @@ class LaqdaInferencer:
 
         # ── Aprender temperatura no validation set ──────────────────────────
         tau_opt = 15.0  # fallback: temperatura padrão
+        have_val_scores = False  # sinaliza se val_logits_t/val_targets_t ficaram disponíveis
 
         if val_dataset is not None:
             print("Temperature Scaling: coletando logits do validation set...")
@@ -472,6 +548,7 @@ class LaqdaInferencer:
                     result = minimize_scalar(nll_loss, bounds=(np.log(0.1), np.log(100.0)), method='bounded')
                     tau_opt = float(np.exp(result.x))
                     print(f"Temperature Scaling: tau ótimo aprendido = {tau_opt:.4f} (original: 15.0)")
+                    have_val_scores = True
                 else:
                     print("Temperature Scaling: validation set sem amostras ID válidas. Usando tau=15.0")
             else:
@@ -516,6 +593,24 @@ class LaqdaInferencer:
         id_scores = confidences[id_mask]
         ood_scores = confidences[ood_mask]
 
+        # SGR próprio do Temperature Scaling: a confiança é uma probabilidade softmax
+        # calibrada por tau_opt, escala diferente do score DEFAULT (-min_dist x 15.0)
+        # — os thresholds do modelo (buffers) não transferem. Reaproveita o mesmo
+        # forward pass do val já feito acima para calibrar tau_opt (val_logits_t /
+        # val_targets_t), sem rodar o encoder no val set de novo.
+        sgr_extras = {}
+        if have_val_scores:
+            val_probs = F.softmax(val_logits_t * tau_opt, dim=1)
+            val_confidences, val_preds = torch.max(val_probs, dim=1)
+            val_id_mask = val_targets_t != -1
+
+            sgr_extras.update(self._fit_and_apply_sgr(
+                val_confidences[val_id_mask], val_preds[val_id_mask], val_targets_t[val_id_mask],
+                confidences, preds, all_targets_t, id_mask, ood_mask
+            ))
+        else:
+            print("  [Aviso] val_dataset não fornecido/vazio — SGR não aplicado ao Temperature Scaling.")
+
         from methods.metrics.reporter import MetricsReporter
         reporter = MetricsReporter(save_dir=save_dir)
         reporter.generate_report(
@@ -527,6 +622,7 @@ class LaqdaInferencer:
             model=model,
             prefix="test_final_tempscale",
             temp_scaling_tau=tau_opt,
+            **sgr_extras
         )
         print(f"Relatório test_final_tempscale_metrics_report.json salvo em {save_dir}")
 
@@ -536,7 +632,7 @@ class LaqdaInferencer:
     # Mahalanobis global, adaptando o artigo para Few-Shot/LAQDA.
     # =========================================================================
     def evaluate_ood_xmahalanobis(self, dataset, support_text: list, labels_dict: dict,
-                                   batch_size=32, save_dir='./results'):
+                                   batch_size=32, save_dir='./results', val_dataset=None):
         id2label = {v: k for k, v in labels_dict.items()}
         label_text_list = [id2label[i] for i in range(len(labels_dict))]
         
@@ -573,7 +669,14 @@ class LaqdaInferencer:
         support_labels = torch.cat(support_labels)
         
         num_layers, total_support, hidden_size = support_all_hidden.shape
-        
+
+        # Normaliza cada camada para escala comparável (L2 por amostra) ANTES de medir
+        # variância e de misturar. Sem isso, uma camada com ativações de magnitude bruta
+        # maior (aqui, a camada Label-Aware customizada — encoder.py, sem LayerNorm final)
+        # domina o peso só por escala, não por conteúdo discriminativo, e o mecanismo do
+        # paper (aproveitar sinal das camadas rasas) fica anulado na prática.
+        support_all_hidden = F.normalize(support_all_hidden, p=2, dim=2)
+
         # Calcular pesos por camada: alpha^l = Tr( (A^l)^T A^l )
         alphas = []
         for l in range(num_layers):
@@ -582,100 +685,116 @@ class LaqdaInferencer:
             centered = layer_feats - mean_feat
             variance = (centered ** 2).sum().item()
             alphas.append(variance)
-            
+
         alphas = np.array(alphas)
         alphas = alphas / alphas.sum()
         print(f"Pesos X-Mahalanobis por camada: {np.round(alphas, 4)}")
-        
+
         alphas_t = torch.tensor(alphas, dtype=torch.float32).unsqueeze(1).unsqueeze(2) # (num_layers, 1, 1)
-        
+
         # Computar features misturadas para o Support Set: Phi(x) = sum(alpha^l * x^l)
         support_mixed = (support_all_hidden * alphas_t).sum(dim=0)
-        
+
         # Estimar mu_c e Sigma globais no espaço misturado
         class_means = []
         for c in range(n_classes):
             c_feats = support_mixed[support_labels == c]
             class_means.append(c_feats.mean(dim=0))
         class_means = torch.stack(class_means)
-        
+
         centered_mixed = []
         for i in range(total_support):
             c = support_labels[i].item()
             centered_mixed.append(support_mixed[i] - class_means[c])
         centered_mixed = torch.stack(centered_mixed)
-        
-        cov = torch.matmul(centered_mixed.t(), centered_mixed) / total_support
-        
-        jitter = 1e-6 * torch.eye(hidden_size)
-        cov = cov + jitter
+
+        # Covariância shrinkage (Ledoit-Wolf) em vez de MLE + jitter fixo: com
+        # total_support (kshot * nway, tipicamente 30-60) << hidden_size (768), a
+        # covariância MLE é mal-condicionada (posto <= total_support - n_classes,
+        # deixando centenas de direções com variância ~0) e um jitter de 1e-6 é
+        # regularização irrisória — a inversa amplifica ruído numérico por ~1e6 nessas
+        # direções. Ledoit-Wolf estima o shrinkage ótimo para esse regime
+        # alta-dimensão/poucas-amostras.
+        from sklearn.covariance import LedoitWolf
+        lw = LedoitWolf(assume_centered=True).fit(centered_mixed.numpy())
+
+        # Piso de regularização absoluto: com kshot=1, cada classe tem 1 única amostra,
+        # então centered_mixed é EXATAMENTE zero (amostra - média da própria classe) —
+        # não há sinal de variância intra-classe algum. Nesse caso o próprio Ledoit-Wolf
+        # escolhe shrinkage=0 (não há nada para encolher em direção à identidade: seu
+        # alvo também é derivado de centered_mixed, logo também é zero) e a covariância
+        # shrinkada colapsa para 0, zerando a inversa inteira -> toda distância de
+        # Mahalanobis vira 0 para todas as classes (AUROC=0.5, tudo empatado). O piso
+        # usa a escala da variância GERAL entre amostras (support_mixed), que nunca é
+        # zero mesmo com 1 amostra por classe, em vez de depender do sinal intra-classe.
+        floor = 1e-3 * support_mixed.var(dim=0).mean().item()
+        cov = torch.tensor(lw.covariance_, dtype=torch.float32) + floor * torch.eye(hidden_size)
         inv_cov = torch.linalg.inv(cov)
-        
+
         device = next(model.parameters()).device
         alphas_t = alphas_t.to(device).squeeze(2) # (num_layers, 1)
         class_means = class_means.to(device)
         inv_cov = inv_cov.to(device)
-        
+
+        def _score_split(dl):
+            """Aplica o score X-Mahalanobis (parâmetros fixados no support) a um split."""
+            split_dists, split_targets = [], []
+            with torch.no_grad():
+                for texts, labels in tqdm(dl):
+                    _, all_hidden = model.encoder(texts, label_text_list, output_hidden_states=True)
+                    stacked_hidden = torch.stack(all_hidden, dim=0)
+                    stacked_hidden = F.normalize(stacked_hidden, p=2, dim=2)
+
+                    query_mixed = (stacked_hidden * alphas_t.unsqueeze(2)).sum(dim=0)
+
+                    batch_size_cur = query_mixed.shape[0]
+                    dists = torch.zeros(batch_size_cur, n_classes, device=device)
+                    for c in range(n_classes):
+                        diff = query_mixed - class_means[c].unsqueeze(0)
+                        left = torch.matmul(diff, inv_cov)
+                        mahalanobis_dist = (left * diff).sum(dim=1)
+                        dists[:, c] = mahalanobis_dist
+
+                    split_dists.append(dists.cpu())
+                    split_targets.append(labels.cpu())
+            return torch.cat(split_dists), torch.cat(split_targets)
+
         print(f"Avaliando OOD metrics — Estratégia: X-Mahalanobis (test_final_xmaha)...")
-        all_dists = []
-        all_targets = []
-        
-        with torch.no_grad():
-            for texts, labels in tqdm(dataloader):
-                _, all_hidden = model.encoder(texts, label_text_list, output_hidden_states=True)
-                stacked_hidden = torch.stack(all_hidden, dim=0)
-                
-                query_mixed = (stacked_hidden * alphas_t.unsqueeze(2)).sum(dim=0)
-                
-                batch_size_cur = query_mixed.shape[0]
-                dists = torch.zeros(batch_size_cur, n_classes, device=device)
-                for c in range(n_classes):
-                    diff = query_mixed - class_means[c].unsqueeze(0)
-                    left = torch.matmul(diff, inv_cov)
-                    mahalanobis_dist = (left * diff).sum(dim=1)
-                    dists[:, c] = mahalanobis_dist
-                    
-                all_dists.append(dists.cpu())
-                all_targets.append(labels.cpu())
-                
-        all_dists_t = torch.cat(all_dists)
-        all_targets_t = torch.cat(all_targets)
-        
+        all_dists_t, all_targets_t = _score_split(dataloader)
+
         min_dists, preds = torch.min(all_dists_t, dim=1)
         confidences = -min_dists
-        
+
         id_mask = all_targets_t != -1
         ood_mask = all_targets_t == -1
         id_scores = confidences[id_mask]
         ood_scores = confidences[ood_mask]
-        
+
+        # id_only_accuracy é calculado centralmente em compute_accuracy_f1
+        # (methods/metrics/classification.py) a partir de targets/preds.
         sgr_extras = {}
-        thresholds_to_check = [
-            (10, 'sgr_threshold_10'),
-            (15, 'sgr_threshold_15'),
-            (20, 'sgr_threshold_20'),
-            (25, 'sgr_threshold_25')
-        ]
-        
-        for risk_pct, attr_name in thresholds_to_check:
-            if hasattr(model, attr_name) and getattr(model, attr_name).item() != -float('inf'):
-                sgr_th = getattr(model, attr_name).item()
-                abstained = (confidences < sgr_th)
-                abstention_rate = abstained.float().mean().item()
-                
-                accepted_mask = ~abstained
-                if accepted_mask.sum() > 0:
-                    acc_accepted = (preds[accepted_mask] == all_targets_t[accepted_mask]).float().mean().item()
-                else:
-                    acc_accepted = 0.0
-                    
-                prefix = "" if risk_pct == 10 else f"_{risk_pct}"
-                sgr_extras.update({
-                    f"sgr_applied_threshold{prefix}": sgr_th,
-                    f"sgr_abstention_rate{prefix}": abstention_rate,
-                    f"sgr_accepted_accuracy{prefix}": acc_accepted
-                })
-            
+
+        # SGR próprio do X-Mahalanobis: os thresholds salvos no modelo (buffers)
+        # foram calibrados no score canônico (cosseno x tau) e NÃO transferem
+        # para a escala Mahalanobis. Calibramos aqui thresholds específicos no
+        # val set (somente ID), usando EXATAMENTE este score, e aplicamos ao teste.
+        if val_dataset is not None:
+            print("X-Mahalanobis: calibrando thresholds SGR no validation set...")
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+            val_dists_t, val_targets_t = _score_split(val_loader)
+
+            val_id_mask = val_targets_t != -1
+            val_min_dists, val_preds = torch.min(val_dists_t, dim=1)
+            val_confidences = -val_min_dists
+
+            sgr_extras.update(self._fit_and_apply_sgr(
+                val_confidences[val_id_mask], val_preds[val_id_mask], val_targets_t[val_id_mask],
+                confidences, preds, all_targets_t, id_mask, ood_mask
+            ))
+        else:
+            print("  [Aviso] val_dataset não fornecido — SGR não aplicado ao X-Mahalanobis "
+                  "(os thresholds do modelo estão em outra escala e não podem ser reutilizados).")
+
         from methods.metrics.reporter import MetricsReporter
         reporter = MetricsReporter(save_dir=save_dir)
         reporter.generate_report(

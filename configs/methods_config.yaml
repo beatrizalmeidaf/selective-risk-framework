@@ -6,7 +6,7 @@ laqda:
   model:
     la: 1
     num_freeze: 6
-    k: 5 
+    k: 15 
 
   training:
     epochs: 100

@@ -60,7 +60,7 @@ def main():
     labels_dict = datamodule.labels_dict
     
     test_dataset = datamodule.test_dataset
-    val_dataset = datamodule.valid_dataset  # Usado pelo Temperature Scaling
+    val_dataset = datamodule.valid_dataset  # Usado pelo Temperature Scaling e pela calibração SGR do X-Mahalanobis
     
     inferencer = LaqdaInferencer(model_paths=args.model_paths, config=config, device=device_str)
     
@@ -92,6 +92,7 @@ def main():
         print("=" * 60)
         inferencer.evaluate_ood_margin(
             test_dataset, support_text, labels_dict,
+            val_dataset=val_dataset,
             batch_size=32, save_dir=args.output_dir
         )
 
@@ -101,6 +102,7 @@ def main():
         print("=" * 60)
         inferencer.evaluate_ood_mc_dropout(
             test_dataset, support_text, labels_dict,
+            val_dataset=val_dataset,
             batch_size=32, save_dir=args.output_dir,
             n_passes=args.mc_passes
         )
@@ -121,6 +123,7 @@ def main():
         print("=" * 60)
         inferencer.evaluate_ood_xmahalanobis(
             test_dataset, support_text, labels_dict,
+            val_dataset=val_dataset,
             batch_size=32, save_dir=args.output_dir
         )
 

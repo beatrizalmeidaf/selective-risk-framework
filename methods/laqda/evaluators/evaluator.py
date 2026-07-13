@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
+from ..scoring import compute_prototype_scores
+
 class LaqdaEvaluator:
     """
     Avalia o modelo LAQDA usando o dataloader episódico.
@@ -43,8 +45,11 @@ class LaqdaEvaluator:
                     batch_acc.append(acc)
                     batch_f1.append(f1)
                     
-                    # Accumulate for global metrics (apenas ID)
-                    dists = torch.pow(query_embeddings.unsqueeze(1) - prototypes.unsqueeze(0), 2).sum(2)
+                    # Accumulate for global metrics (apenas ID).
+                    # CRÍTICO: usa o MESMO score canônico da inferência (cosseno x tau,
+                    # methods/laqda/scoring.py). Se a métrica/escala divergir daqui,
+                    # o threshold SGR calibrado abaixo NÃO transfere para o teste.
+                    dists, _, _, _ = compute_prototype_scores(query_embeddings, prototypes)
                     all_dists.append(dists.cpu())
                     all_targets.append(torch.argmax(query_labels_tensor, dim=1).cpu())
                     
@@ -61,12 +66,11 @@ class LaqdaEvaluator:
             all_dists_t = torch.cat(all_dists)
             all_targets_t = torch.cat(all_targets)
             
-            # Usar MARGIN SCORE (distância relativa) para maior estabilidade OOD
-            sorted_dists, indices = torch.sort(all_dists_t, dim=1)
-            first_closest = sorted_dists[:, 0]
-            second_closest = sorted_dists[:, 1]
-            preds = indices[:, 0]
-            confidences = second_closest - first_closest
+            # Score DEFAULT (-min_dist em escala cosseno x tau) — idêntico ao score
+            # sobre o qual o threshold é aplicado na inferência (estratégia DEFAULT
+            # de infer.py). O SGR é calibrado NESTA escala e somente nela.
+            min_dists, preds = torch.min(all_dists_t, dim=1)
+            confidences = -min_dists
             
             from methods.metrics.reporter import MetricsReporter
             reporter = MetricsReporter()

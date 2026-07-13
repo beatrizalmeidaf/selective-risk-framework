@@ -58,6 +58,7 @@ SORT_KEYS = {
     "cov1":    "sgr_coverage_at_risk_1",
     "aurc":    "aurc",
     "acc":     "accuracy",
+    "id_acc":  "id_only_accuracy",
     "auroc":   "auroc",
     "f1":      "f1_macro",
 }
@@ -91,10 +92,12 @@ def load_report_aggregated(base_path: str, lang_dir: str, folder: str, corpus: s
     folds = [f"fold_0{i}" for i in range(1, 6)]
     
     metrics = {
-        "accuracy": [], "f1_macro": [], "aurc": [], "e_aurc": [], 
+        "accuracy": [], "id_only_accuracy": [], "ood_fraction": [],
+        "f1_macro": [], "aurc": [], "e_aurc": [],
         "auroc": [], "sgr_coverage_at_risk_1": [], "sgr_coverage_at_risk_5": [],
         "sgr_coverage_at_risk_10": [], "fpr_at_95": [], "ece": [],
-        "sgr_accepted_accuracy": [], "sgr_abstention_rate": []
+        "sgr_accepted_accuracy": [], "sgr_abstention_rate": [],
+        "sgr_id_coverage": [], "sgr_ood_rejection_rate": []
     }
     
     folds_found = 0
@@ -134,21 +137,25 @@ def collect_rows_aggregated(base_path: str, lang_dir: str, corpus: str, kshot: s
             continue
             
         rows.append({
-            "label":   label,
-            "folder":  folder,
-            "folds":   d["folds_found"],
-            "acc":     d.get("accuracy"),
-            "f1":      d.get("f1_macro"),
-            "aurc":    d.get("aurc"),
-            "e_aurc":  d.get("e_aurc"),
-            "auroc":   d.get("auroc"),
-            "cov1":    d.get("sgr_coverage_at_risk_1"),
-            "cov5":    d.get("sgr_coverage_at_risk_5"),
-            "cov10":   d.get("sgr_coverage_at_risk_10"),
-            "fpr95":   d.get("fpr_at_95"),
-            "ece":     d.get("ece"),
-            "sgr_acc": d.get("sgr_accepted_accuracy"),
-            "sgr_abs": d.get("sgr_abstention_rate"),
+            "label":     label,
+            "folder":    folder,
+            "folds":     d["folds_found"],
+            "acc":       d.get("accuracy"),
+            "id_acc":    d.get("id_only_accuracy"),
+            "ood_frac":  d.get("ood_fraction"),
+            "f1":        d.get("f1_macro"),
+            "aurc":      d.get("aurc"),
+            "e_aurc":    d.get("e_aurc"),
+            "auroc":     d.get("auroc"),
+            "cov1":      d.get("sgr_coverage_at_risk_1"),
+            "cov5":      d.get("sgr_coverage_at_risk_5"),
+            "cov10":     d.get("sgr_coverage_at_risk_10"),
+            "fpr95":     d.get("fpr_at_95"),
+            "ece":       d.get("ece"),
+            "sgr_acc":   d.get("sgr_accepted_accuracy"),
+            "sgr_abs":   d.get("sgr_abstention_rate"),
+            "sgr_idcov": d.get("sgr_id_coverage"),
+            "sgr_oodrej": d.get("sgr_ood_rejection_rate"),
         })
         
     def sort_func(x):
@@ -182,40 +189,60 @@ def marker(folder: str) -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def print_full(rows, kshot: str):
-    """Tabela completa com todas as métricas agregadas."""
-    W = 160
+    """Tabela completa com todas as métricas agregadas.
+
+    'Acc(ID+OOD)' é limitada estruturalmente por (1 - ood_fraction): amostras OOD
+    nunca podem ser acertadas por um classificador fechado, então essa coluna NÃO
+    mede a qualidade real do classificador — só serve de contexto. Use
+    'Acc(ID)' (id_only_accuracy) para comparar classificação, e AUROC/FPR@95 para
+    comparar detecção OOD (ver docs/metrics.md).
+
+    'SGR@5%'/'SGR@10%' (sgr_coverage_at_risk_*) exigem garantir risco <= r* no
+    conjunto de teste MISTURADO com OOD (PAC bound) — costuma zerar quando o AUROC
+    é fraco, mesmo com boa acurácia ID. 'SGR IDCov'/'SGR OODRej' (sgr_id_coverage /
+    sgr_ood_rejection_rate) são a métrica complementar: o threshold é calibrado só
+    em ID (val), aplicado ao teste, e reporta separadamente quanto do ID continua
+    sendo servido vs. quanto do OOD é corretamente rejeitado — normalmente mais
+    informativa que o SGR@ zerado.
+    """
+    W = 230
     print(f"\n{'─' * W}")
     print(f"  {kshot.upper()} (Médias sobre múltiplos folds)")
     print(f"{'─' * W}")
     header = (
-        f"  {'Método':<22} | {'Folds'} | {'Acc':>15} | {'AURC':>15} | "
+        f"  {'Método':<22} | {'Folds'} | {'Acc(ID+OOD)':>15} | {'Acc(ID)':>15} | {'AURC':>15} | "
         f"{'E-AURC':>15} | {'SGR@5%':>15} | {'SGR@10%':>15} | "
-        f"{'AUROC':>15} | {'FPR@95':>15}"
+        f"{'SGR IDCov':>15} | {'SGR OODRej':>15} | {'AUROC':>15} | {'FPR@95':>15}"
     )
     print(header)
     print(f"{'─' * W}")
     for r in rows:
         m = marker(r["folder"])
         print(
-            f"{m} {r['label']:<22} |   {r['folds']}   | {fmt_agg(r['acc'])} | {fmt_agg(r['aurc'])} | "
+            f"{m} {r['label']:<22} |   {r['folds']}   | {fmt_agg(r['acc'])} | {fmt_agg(r['id_acc'])} | {fmt_agg(r['aurc'])} | "
             f"{fmt_agg(r['e_aurc'])} | {fmt_agg(r['cov5'])} | {fmt_agg(r['cov10'])} | "
+            f"{fmt_agg(r['sgr_idcov'])} | {fmt_agg(r['sgr_oodrej'])} | "
             f"{fmt_agg(r['auroc'])} | {fmt_agg(r['fpr95'])}"
         )
+    if rows and rows[0].get("ood_frac") and rows[0]["ood_frac"][0] is not None:
+        print(f"  (fração OOD do split: {rows[0]['ood_frac'][0]*100:.1f}% -> teto de Acc(ID+OOD) = "
+              f"{(1 - rows[0]['ood_frac'][0])*100:.1f}%, mesmo com classificador perfeito nas classes ID)")
 
 
 def print_fast(rows, kshot: str):
     """Tabela rápida com métricas principais."""
-    W = 95
+    W = 140
     print(f"\n{'─' * W}")
     print(f"  {kshot.upper()} (Médias sobre múltiplos folds)")
     print(f"{'─' * W}")
-    header = f"  {'Método':<22} | {'Acc':>15} | {'AURC':>15} | {'SGR@10%':>15}"
+    header = f"  {'Método':<22} | {'Acc(ID)':>15} | {'AURC':>15} | {'SGR@10%':>15} | {'SGR IDCov':>15} | {'SGR OODRej':>15}"
     print(header)
     print(f"{'─' * W}")
     for r in rows:
         m = marker(r["folder"])
         print(
-            f"{m} {r['label']:<22} | {fmt_agg(r['acc'])} | {fmt_agg(r['aurc'])} | {fmt_agg(r['cov10'])}"
+            f"{m} {r['label']:<22} | {fmt_agg(r['id_acc'])} | {fmt_agg(r['aurc'])} | {fmt_agg(r['cov10'])} | "
+            f"{fmt_agg(r['sgr_idcov'])} | {fmt_agg(r['sgr_oodrej'])}"
         )
 
 
@@ -227,11 +254,8 @@ def save_csv(all_rows: list, path: str):
     flat_rows = []
     for r in all_rows:
         flat = {"kshot": r["kshot"], "label": r["label"], "folder": r["folder"], "folds": r["folds"]}
-        headers = [
-            "Metodo", "Folds", "Acc", "F1", "AURC", "EAURC", 
-            "AUROC", "Cov@1", "Cov@5", "Cov@10", "FPR95", "ECE", "SGR_Acc", "SGR_Abs"
-        ]
-        for k in ["acc", "f1", "aurc", "e_aurc", "auroc", "cov1", "cov5", "cov10", "fpr95", "ece", "sgr_acc", "sgr_abs"]:
+        for k in ["acc", "id_acc", "ood_frac", "f1", "aurc", "e_aurc", "auroc", "cov1", "cov5", "cov10",
+                  "fpr95", "ece", "sgr_acc", "sgr_abs", "sgr_idcov", "sgr_oodrej"]:
             if r.get(k) and r[k][0] is not None:
                 flat[f"{k}_mean"] = r[k][0]
                 flat[f"{k}_std"] = r[k][1]

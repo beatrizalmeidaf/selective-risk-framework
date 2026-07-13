@@ -47,6 +47,13 @@ class MetricsReporter:
             
         # 6. Adicionar métricas extras injetadas (ex: Abstenção SGR)
         report.update(extras)
+
+        # Capturado antes do filtro abaixo: usado só para o destaque no console,
+        # já que 'accuracy'/'ood_fraction' não entram no JSON enxuto.
+        ood_fraction = report.get("ood_fraction")
+        id_only_accuracy = report.get("id_only_accuracy")
+
+
             
         # Converter numpy floats para python floats para JSON
         for k, v in report.items():
@@ -58,6 +65,10 @@ class MetricsReporter:
                 
         # Exibir na tela
         print(f"\n[{prefix.upper()}] Metricas de Avaliação:")
+        if isinstance(ood_fraction, (int, float)) and ood_fraction > 0:
+            ceiling = 1 - ood_fraction
+            print(f"  *** {ood_fraction*100:.1f}% do split é OOD -> 'accuracy' global tem teto teórico de {ceiling:.4f}, mesmo com classificador perfeito nas classes ID. ***")
+            print(f"  *** Use 'id_only_accuracy' ({id_only_accuracy:.4f}) para medir a qualidade real do classificador. ***")
         for k, v in report.items():
             print(f"  - {k}: {v:.4f}")
             
