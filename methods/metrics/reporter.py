@@ -2,6 +2,7 @@ import json
 import os
 import torch
 import numpy as np
+import math
 
 from .classification import compute_accuracy_f1
 from .calibration import compute_ece
@@ -51,6 +52,9 @@ class MetricsReporter:
         for k, v in report.items():
             if isinstance(v, (np.float32, np.float64, np.float16)):
                 report[k] = float(v)
+            if isinstance(report[k], float):
+                if math.isinf(report[k]) or math.isnan(report[k]):
+                    report[k] = str(report[k])
                 
         # Exibir na tela
         print(f"\n[{prefix.upper()}] Metricas de Avaliação:")
