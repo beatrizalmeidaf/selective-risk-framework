@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from torch.optim import AdamW
-from transformers import get_linear_schedule_with_warmup
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from ..evaluators.evaluator import LaqdaEvaluator
 
 class LaqdaTrainer:
@@ -43,7 +43,8 @@ class LaqdaTrainer:
         else:
             self.optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
             
-        self.lr_scheduler = get_linear_schedule_with_warmup(self.optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+        self.lr_scheduler = ReduceLROnPlateau(self.optimizer, mode='max', factor=0.5, patience=5)
+        print(f"\n[*] Optimizer iniciado do zero. Learning Rate base: {learning_rate:.2e}")
 
     def fit(self, tr_dataloader, labels_dict: dict, val_dataloader=None, save_dir: str = './outputs'):
         os.makedirs(save_dir, exist_ok=True)
@@ -91,8 +92,6 @@ class LaqdaTrainer:
 
                 loss.backward()
                 self.optimizer.step()
-                if self.lr_scheduler:
-                    self.lr_scheduler.step()
                 
                 batch_loss.append(loss.item())
                 batch_acc.append(acc)
@@ -116,6 +115,11 @@ class LaqdaTrainer:
                     cycle = 0
                 else:
                     cycle += 1
+                    
+                if self.lr_scheduler:
+                    self.lr_scheduler.step(val_acc)
+                    current_lr = self.optimizer.param_groups[0]['lr']
+                    print(f"Current LR: {current_lr:.2e}")
             else:
                 torch.save(self.model.state_dict(), best_model_path)
 
