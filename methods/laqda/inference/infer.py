@@ -557,7 +557,7 @@ class LaqdaInferencer:
             sup_loader = TorchDataLoader(sup_dataset, batch_size=batch_size, shuffle=False)
             
             for texts, labels in sup_loader:
-                _, _, _, _, _, all_hidden = model(texts, label_text_list, kshot=kshot, output_hidden_states=True)
+                _, all_hidden = model.encoder(texts, label_text_list, output_hidden_states=True)
                 stacked_hidden = torch.stack(all_hidden, dim=0).cpu()
                 support_all_hidden.append(stacked_hidden)
                 support_labels.append(labels)
@@ -615,7 +615,7 @@ class LaqdaInferencer:
         
         with torch.no_grad():
             for texts, labels in tqdm(dataloader):
-                _, _, _, _, _, all_hidden = model(texts, label_text_list, kshot=kshot, output_hidden_states=True)
+                _, all_hidden = model.encoder(texts, label_text_list, output_hidden_states=True)
                 stacked_hidden = torch.stack(all_hidden, dim=0)
                 
                 query_mixed = (stacked_hidden * alphas_t.unsqueeze(2)).sum(dim=0)
