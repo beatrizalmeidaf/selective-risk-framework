@@ -113,7 +113,7 @@ for FOLD in ${FOLDS[@]}; do
             python -m methods.laqda.cli.infer \\
                 --dataset_dir "${DATA_DIR}" \\
                 --fold "\${FOLD}" \\
-                --model_paths "\${SAVE_DIR}/kshot_\${K}/acc_best_model.pth" \\
+                --model_paths "\${SAVE_DIR}/kshot_\${K}/best_model.pth" \\
                 --output_dir "\${SAVE_DIR}" \\
                 --kshot "\${K}" \\
                 --score_mode all

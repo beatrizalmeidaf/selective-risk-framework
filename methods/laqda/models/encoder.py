@@ -29,7 +29,7 @@ class LabelAwareEncoder(nn.Module):
                 print(f"Warning: Model {model_name} does not have 'encoder.layer'. Disabling Label-Aware logic.")
                 self.la = 0
                 
-        self.drop = nn.Dropout(getattr(config, 'hidden_dropout_prob', 0.1))
+        self.drop = nn.Dropout(0.3)
         
         if num_freeze > 0:
             self._freeze_layers(min(num_freeze, config.num_hidden_layers), config.num_hidden_layers)

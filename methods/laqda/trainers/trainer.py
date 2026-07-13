@@ -20,6 +20,9 @@ class LaqdaTrainer:
         self.patience = config.get('training', {}).get('patience', 20)
         
         self.evaluator = LaqdaEvaluator(model, loss_fn, device, config)
+        
+        # Otimização H100: BFloat16 para velocidade dobrada
+        self.scaler = torch.amp.GradScaler('cuda', enabled=True)
 
     def setup_optimizer(self):
         train_cfg = self.config.get('training', {})
@@ -43,17 +46,17 @@ class LaqdaTrainer:
         else:
             self.optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
             
-        self.lr_scheduler = ReduceLROnPlateau(self.optimizer, mode='max', factor=0.5, patience=5)
+        self.lr_scheduler = ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=5)
         print(f"\n[*] Optimizer iniciado do zero. Learning Rate base: {learning_rate:.2e}")
 
     def fit(self, tr_dataloader, labels_dict: dict, val_dataloader=None, save_dir: str = './outputs'):
         os.makedirs(save_dir, exist_ok=True)
-        best_model_path = os.path.join(save_dir, 'acc_best_model.pth')
+        best_model_path = os.path.join(save_dir, 'best_model.pth')
         
         epochs = self.config.get('training', {}).get('epochs', 100)
         
         acc_best_state = None
-        best_acc = 0.0
+        best_val_loss = float('inf')
         cycle = 0
         
         id2label = {idx: original_label for original_label, idx in labels_dict.items()}
@@ -81,8 +84,9 @@ class LaqdaTrainer:
 
                 query_labels_tensor = one_hot_labels_tensor[len(support_set):]
                 try:
-                    model_outputs = self.model(text, label_text)
-                    loss, p, r, f1, acc, auc, topk_acc = self.loss_fn(model_outputs, query_labels_tensor)
+                    with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+                        model_outputs = self.model(text, label_text)
+                        loss, p, r, f1, acc, auc, topk_acc = self.loss_fn(model_outputs, query_labels_tensor)
                 except Exception as e:
                     print(f"Train Error batch {i}: {e}")
                     continue
@@ -90,8 +94,10 @@ class LaqdaTrainer:
                 if torch.isnan(loss) or torch.isinf(loss):
                     continue
 
-                loss.backward()
-                self.optimizer.step()
+                # Scaled Backward Pass
+                self.scaler.scale(loss).backward()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 
                 batch_loss.append(loss.item())
                 batch_acc.append(acc)
@@ -107,17 +113,17 @@ class LaqdaTrainer:
                 val_loss, val_acc, val_f1 = self.evaluator.evaluate(val_dataloader, labels_dict, epoch)
                 print(f"Média Val: Loss={val_loss:.4f}, Acc={val_acc:.4f}, F1={val_f1:.4f}")
                 
-                if val_acc > best_acc:
-                    print(f"Nova melhor Acc Validação: {val_acc:.4f}. Salvando...")
+                if val_loss < best_val_loss:
+                    print(f"Nova melhor Loss Validação: {val_loss:.4f}. Salvando...")
                     torch.save(self.model.state_dict(), best_model_path)
-                    best_acc = val_acc
+                    best_val_loss = val_loss
                     acc_best_state = copy.deepcopy(self.model.state_dict())
                     cycle = 0
                 else:
                     cycle += 1
                     
                 if self.lr_scheduler:
-                    self.lr_scheduler.step(val_acc)
+                    self.lr_scheduler.step(val_loss)
                     current_lr = self.optimizer.param_groups[0]['lr']
                     print(f"Current LR: {current_lr:.2e}")
             else:

@@ -61,9 +61,12 @@ class LaqdaEvaluator:
             all_dists_t = torch.cat(all_dists)
             all_targets_t = torch.cat(all_targets)
             
-            # No LAQDA, menores distâncias = maior confiança. 
-            # Invertemos o sinal para o reporter
-            confidences, preds = torch.max(-all_dists_t, dim=1)
+            # Usar MARGIN SCORE (distância relativa) para maior estabilidade OOD
+            sorted_dists, indices = torch.sort(all_dists_t, dim=1)
+            first_closest = sorted_dists[:, 0]
+            second_closest = sorted_dists[:, 1]
+            preds = indices[:, 0]
+            confidences = second_closest - first_closest
             
             from methods.metrics.reporter import MetricsReporter
             reporter = MetricsReporter()
@@ -79,11 +82,19 @@ class LaqdaEvaluator:
             if use_sgr:
                 # Treinamento do Limiar de Risco SGR do LAQDA (Target Risk = 10%)
                 from methods.sgr.sgr import SGRController
-                sgr = SGRController(delta=0.001)
+                sgr = SGRController(delta=0.05)
                 r_star = self.config.get('metrics', {}).get('sgr_r_star', 0.10)
                 best_theta, _, _ = sgr.fit(confidences, preds, all_targets_t, r_star=r_star)
-                self.model.sgr_threshold.fill_(best_theta)
+                self.model.sgr_threshold_10.fill_(best_theta)
                 print(f"LAQDA SGR Threshold (Risco {r_star*100}%) travado em: {best_theta:.4f}")
+                
+                # Exibir coverage para outros níveis de risco (análise few-shot)
+                for r_test in [0.15, 0.20, 0.25]:
+                    t_val, b_val, c_val = sgr.fit(confidences, preds, all_targets_t, r_star=r_test)
+                    print(f"  [Info] SGR alcançável p/ risco {r_test*100}% -> Cobertura: {c_val:.4f}")
+                    if r_test == 0.15 and hasattr(self.model, 'sgr_threshold_15'): self.model.sgr_threshold_15.fill_(t_val)
+                    if r_test == 0.20 and hasattr(self.model, 'sgr_threshold_20'): self.model.sgr_threshold_20.fill_(t_val)
+                    if r_test == 0.25 and hasattr(self.model, 'sgr_threshold_25'): self.model.sgr_threshold_25.fill_(t_val)
         
         return avg_loss, avg_acc, avg_f1
 

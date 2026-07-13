@@ -15,7 +15,7 @@ class LaqdaContrastiveLoss(nn.Module):
     def forward(self, model_outputs: tuple, target: torch.Tensor):
         prototypes, query_embeddings, acc, original_prototypes, sampled_data = model_outputs
         
-        tau = 15.0
+        tau = 20.0
         q_norm = F.normalize(query_embeddings, p=2, dim=1)
         p_norm = F.normalize(prototypes, p=2, dim=1)
         

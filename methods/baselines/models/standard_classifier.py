@@ -9,7 +9,7 @@ class BaselineClassifier(nn.Module):
     Diferente do LAQDA, aqui retornamos as features (penúltima camada)
     e as logits (última camada) isoladas para servir de input aos scorers OOD.
     """
-    def __init__(self, model_name: str, num_classes: int, num_freeze: int = 6, dropout: float = 0.1):
+    def __init__(self, model_name: str, num_classes: int, num_freeze: int = 6, dropout: float = 0.1, kshot: int = None):
         super(BaselineClassifier, self).__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.encoder = AutoModel.from_pretrained(model_name)
@@ -21,8 +21,17 @@ class BaselineClassifier(nn.Module):
             nn.Linear(self.hidden_size, num_classes)
         )
         
+        total_layers = getattr(self.encoder.config, 'num_hidden_layers', 12)
+        
+        if kshot is not None:
+            if kshot <= 1:
+                num_freeze = total_layers
+            elif kshot <= 5:
+                num_freeze = max(0, total_layers - 2)
+            else:
+                num_freeze = max(0, total_layers - 6)
+
         if num_freeze > 0:
-            total_layers = getattr(self.encoder.config, 'num_hidden_layers', 12)
             self._freeze_layers(min(num_freeze, total_layers), total_layers)
 
     def _freeze_layers(self, num_freeze: int, total_layers: int):

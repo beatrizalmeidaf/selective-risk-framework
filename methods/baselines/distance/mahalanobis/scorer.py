@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from sklearn.covariance import LedoitWolf
 
 class MahalanobisScorer:
     """
@@ -40,21 +41,21 @@ class MahalanobisScorer:
         self.class_means = torch.stack(class_means)  # (C, D)
         
         # Calcular Matriz de Covariância compartilhada (Tied Covariance)
-        cov = torch.zeros((D, D), device=train_features.device)
+        # Usamos o Shrinkage Estimator de Ledoit-Wolf para evitar 
+        # matrizes singulares no regime few-shot (K <= 10).
+        centered_features = []
         for c, mean_vec in zip(classes, class_means):
             c_features = train_features[train_labels == c]
             centered = c_features - mean_vec
-            # (N_c, D) -> (D, D)
-            cov += torch.mm(centered.t(), centered)
+            centered_features.append(centered)
+            
+        centered_features = torch.cat(centered_features).cpu().numpy()
         
-        cov = cov / train_features.shape[0]
+        lw = LedoitWolf()
+        lw.fit(centered_features)
         
-        # Adicionar jitter para estabilidade numérica
-        epsilon = 1e-6
-        cov += torch.eye(D, device=cov.device) * epsilon
-        
-        # Inverter para obter a Matriz de Precisão
-        self.precision_matrix = torch.linalg.inv(cov)
+        # Inverter para obter a Matriz de Precisão (LedoitWolf já fornece precision_)
+        self.precision_matrix = torch.tensor(lw.precision_, dtype=torch.float32, device=train_features.device)
 
     def compute_score(self, features: torch.Tensor) -> torch.Tensor:
         """

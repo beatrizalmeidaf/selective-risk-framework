@@ -69,12 +69,12 @@ class StandardDataModule:
             self.test_dataset = JSONLDataset(test_file, class_name_to_id=self.labels_dict, keep_unknown_classes=self.keep_unknown_classes)
 
     def train_dataloader(self, collate_fn=None, shuffle=True) -> DataLoader:
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=shuffle, collate_fn=collate_fn)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=shuffle, collate_fn=collate_fn, num_workers=4, pin_memory=True)
 
     def val_dataloader(self, collate_fn=None) -> Optional[DataLoader]:
         if self.valid_dataset is None: return None
-        return DataLoader(self.valid_dataset, batch_size=self.batch_size, shuffle=False, collate_fn=collate_fn)
+        return DataLoader(self.valid_dataset, batch_size=self.batch_size, shuffle=False, collate_fn=collate_fn, num_workers=4, pin_memory=True)
 
     def test_dataloader(self, collate_fn=None) -> Optional[DataLoader]:
         if self.test_dataset is None: return None
-        return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, collate_fn=collate_fn)
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, collate_fn=collate_fn, num_workers=4, pin_memory=True)

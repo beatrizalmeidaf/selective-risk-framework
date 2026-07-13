@@ -37,6 +37,10 @@ def get_parser():
     return parser
 
 def main():
+    # Otimização H100: Ativar TensorFloat-32 (TF32) globalmente
+    torch.backends.cudnn.allow_tf32 = True
+    torch.backends.cuda.matmul.allow_tf32 = True
+    
     args = get_parser().parse_args()
     config = load_config(args.config)
     config = config.get('laqda', config)

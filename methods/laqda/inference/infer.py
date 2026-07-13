@@ -176,26 +176,33 @@ class LaqdaInferencer:
         id_scores = confidences[id_mask]
         ood_scores = confidences[ood_mask]
         
-        # Verificar se modelo tem limiar SGR travado (LAQDA com SGR)
+        # Verificar se modelo tem limiares SGR travados (LAQDA com SGR)
         sgr_extras = {}
-        if hasattr(model, 'sgr_threshold') and model.sgr_threshold.item() != -float('inf'):
-            sgr_th = model.sgr_threshold.item()
-            # O SGR é calculado com a confiança ID
-            abstained = (confidences < sgr_th)
-            abstention_rate = abstained.float().mean().item()
-            
-            # Precisão apenas sobre as predições aceitas (onde abstained == False)
-            accepted_mask = ~abstained
-            if accepted_mask.sum() > 0:
-                acc_accepted = (preds[accepted_mask] == all_targets_t[accepted_mask]).float().mean().item()
-            else:
-                acc_accepted = 0.0
+        thresholds_to_check = [
+            (10, 'sgr_threshold_10'),
+            (15, 'sgr_threshold_15'),
+            (20, 'sgr_threshold_20'),
+            (25, 'sgr_threshold_25')
+        ]
+        
+        for risk_pct, attr_name in thresholds_to_check:
+            if hasattr(model, attr_name) and getattr(model, attr_name).item() != -float('inf'):
+                sgr_th = getattr(model, attr_name).item()
+                abstained = (confidences < sgr_th)
+                abstention_rate = abstained.float().mean().item()
                 
-            sgr_extras = {
-                "sgr_applied_threshold": sgr_th,
-                "sgr_abstention_rate": abstention_rate,
-                "sgr_accepted_accuracy": acc_accepted
-            }
+                accepted_mask = ~abstained
+                if accepted_mask.sum() > 0:
+                    acc_accepted = (preds[accepted_mask] == all_targets_t[accepted_mask]).float().mean().item()
+                else:
+                    acc_accepted = 0.0
+                    
+                prefix = "" if risk_pct == 10 else f"_{risk_pct}"
+                sgr_extras.update({
+                    f"sgr_applied_threshold{prefix}": sgr_th,
+                    f"sgr_abstention_rate{prefix}": abstention_rate,
+                    f"sgr_accepted_accuracy{prefix}": acc_accepted
+                })
         
         from methods.metrics.reporter import MetricsReporter
         reporter = MetricsReporter(save_dir=save_dir)
@@ -643,17 +650,31 @@ class LaqdaInferencer:
         ood_scores = confidences[ood_mask]
         
         sgr_extras = {}
-        if hasattr(model, 'sgr_threshold') and model.sgr_threshold.item() != -float('inf'):
-            sgr_th = model.sgr_threshold.item()
-            abstained = (confidences < sgr_th)
-            abstention_rate = abstained.float().mean().item()
-            accepted_mask = ~abstained
-            acc_accepted = (preds[accepted_mask] == all_targets_t[accepted_mask]).float().mean().item() if accepted_mask.sum() > 0 else 0.0
-            sgr_extras = {
-                "sgr_applied_threshold": sgr_th,
-                "sgr_abstention_rate": abstention_rate,
-                "sgr_accepted_accuracy": acc_accepted
-            }
+        thresholds_to_check = [
+            (10, 'sgr_threshold_10'),
+            (15, 'sgr_threshold_15'),
+            (20, 'sgr_threshold_20'),
+            (25, 'sgr_threshold_25')
+        ]
+        
+        for risk_pct, attr_name in thresholds_to_check:
+            if hasattr(model, attr_name) and getattr(model, attr_name).item() != -float('inf'):
+                sgr_th = getattr(model, attr_name).item()
+                abstained = (confidences < sgr_th)
+                abstention_rate = abstained.float().mean().item()
+                
+                accepted_mask = ~abstained
+                if accepted_mask.sum() > 0:
+                    acc_accepted = (preds[accepted_mask] == all_targets_t[accepted_mask]).float().mean().item()
+                else:
+                    acc_accepted = 0.0
+                    
+                prefix = "" if risk_pct == 10 else f"_{risk_pct}"
+                sgr_extras.update({
+                    f"sgr_applied_threshold{prefix}": sgr_th,
+                    f"sgr_abstention_rate{prefix}": abstention_rate,
+                    f"sgr_accepted_accuracy{prefix}": acc_accepted
+                })
             
         from methods.metrics.reporter import MetricsReporter
         reporter = MetricsReporter(save_dir=save_dir)

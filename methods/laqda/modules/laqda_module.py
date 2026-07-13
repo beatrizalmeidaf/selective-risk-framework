@@ -16,8 +16,11 @@ class LaqdaModule(nn.Module):
         self.encoder = LabelAwareEncoder(model_name, la=la, num_freeze=num_freeze)
         self.sampler = TransductiveQDASampler(self.encoder.hidden_size, nway, kshot, qshot, k)
         
-        # Buffer para guardar o Threshold ótimo de rejeição aprendido pelo SGR
-        self.register_buffer('sgr_threshold', torch.tensor(-float('inf')))
+        # Buffers para guardar os Thresholds ótimos de rejeição aprendidos pelo SGR
+        self.register_buffer('sgr_threshold_10', torch.tensor(-float('inf'))) # 10%
+        self.register_buffer('sgr_threshold_15', torch.tensor(-float('inf')))
+        self.register_buffer('sgr_threshold_20', torch.tensor(-float('inf')))
+        self.register_buffer('sgr_threshold_25', torch.tensor(-float('inf')))
 
     def forward(self, text: list, label_texts: list, kshot: int = None, output_hidden_states: bool = False):
         # Durante inferência no dataset completo, label_texts contém TODAS as classes.

@@ -29,9 +29,8 @@ class KNNScorer:
         Args:
             train_features: Tensor de formato (N, D)
         """
-        # Normalizar features pode ajudar no KNN, mas manteremos o espaço original
-        # para preservar o design de contraste Euclidiano do LAQDA.
-        self.bank = train_features.clone().detach()
+        # L2 normalization obrigatória para estabilizar OOD no KNN
+        self.bank = F.normalize(train_features.clone().detach(), p=2, dim=1)
 
     def compute_score(self, features: torch.Tensor) -> torch.Tensor:
         """
@@ -44,11 +43,11 @@ class KNNScorer:
         if self.bank is None:
             raise ValueError("O KNNScorer deve ser ajustado com fit() antes de gerar scores.")
             
+        # L2 Normalization 
+        feat_norm = F.normalize(features, p=2, dim=1)
+        bank_norm = self.bank  # já normalizado no fit
+        
         if self.metric == 'cosine':
-            # Normalização L2 para usar similaridade angular
-            feat_norm = F.normalize(features, p=2, dim=1)
-            bank_norm = F.normalize(self.bank, p=2, dim=1)
-            
             # Similaridade do cosseno: feat_norm * bank_norm.T -> (M, N)
             sims = torch.mm(feat_norm, bank_norm.t())
             
@@ -62,10 +61,10 @@ class KNNScorer:
             
         elif self.metric == 'euclidean':
             # Calcular distâncias quadradas par-a-par
-            feat_norm = (features ** 2).sum(dim=1, keepdim=True)
-            bank_norm = (self.bank ** 2).sum(dim=1, keepdim=True).t()
+            feat_sq = (feat_norm ** 2).sum(dim=1, keepdim=True)
+            bank_sq = (bank_norm ** 2).sum(dim=1, keepdim=True).t()
             
-            dists = feat_norm + bank_norm - 2 * torch.mm(features, self.bank.t())
+            dists = feat_sq + bank_sq - 2 * torch.mm(feat_norm, bank_norm.t())
             dists = torch.clamp(dists, min=0.0)
             dists = torch.sqrt(dists)
             

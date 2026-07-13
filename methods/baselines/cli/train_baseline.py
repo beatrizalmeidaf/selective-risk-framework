@@ -7,6 +7,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from transformers import get_linear_schedule_with_warmup
 from data.datamodule import StandardDataModule
 from methods.laqda.utils.config_loader import load_config
 from methods.metrics.reporter import MetricsReporter
@@ -27,7 +28,7 @@ def get_parser():
     parser.add_argument('--epochs', type=int, default=10, help='Número de épocas de treinamento')
     parser.add_argument('--lr', type=float, default=2e-5, help='Taxa de aprendizado')
     parser.add_argument('--kshot', type=int, default=None, help='Número de shots por classe (opcional, sobrescreve config)')
-    parser.add_argument('--patience', type=int, default=20, help='Patience para Early Stopping')
+    parser.add_argument('--patience', type=int, default=30, help='Patience para Early Stopping')
     parser.add_argument('--num_freeze', type=int, default=6, help='Número de camadas do encoder para congelar')
     parser.add_argument('--weight_decay', type=float, default=1e-2, help='Weight decay para o otimizador AdamW')
     parser.add_argument('--dropout', type=float, default=0.1, help='Taxa de dropout na camada de classificação')
@@ -74,17 +75,25 @@ def main():
 
     # 3. Modelo e Otimizador
     num_classes = len(labels_dict)
-    model = BaselineClassifier(global_model_name, num_classes, num_freeze=args.num_freeze, dropout=args.dropout)
+    model = BaselineClassifier(global_model_name, num_classes, num_freeze=args.num_freeze, dropout=args.dropout, kshot=args.kshot)
     model.to(device_str)
     
-    optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=5)
-    loss_fn = nn.CrossEntropyLoss(ignore_index=-1)
+    optimizer_grouped_parameters = [
+        {'params': model.encoder.parameters(), 'lr': 1e-5},
+        {'params': model.classifier.parameters(), 'lr': 1e-3}
+    ]
+    optimizer = AdamW(optimizer_grouped_parameters, weight_decay=args.weight_decay)
+    
+    total_steps = len(train_loader) * args.epochs
+    warmup_steps = int(0.1 * total_steps)
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+    
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=0.1, ignore_index=-1)
     
     os.makedirs(args.save_dir, exist_ok=True)
     
     # 4. Loop de Treinamento
-    best_acc = 0.0
+    best_val_loss = float('inf')
     epochs_no_improve = 0
     for epoch in range(args.epochs):
         model.train()
@@ -98,6 +107,7 @@ def main():
             loss = loss_fn(logits, labels)
             loss.backward()
             optimizer.step()
+            scheduler.step()
             
             total_loss += loss.item()
             preds = torch.argmax(logits, dim=-1)
@@ -138,8 +148,8 @@ def main():
             val_acc = val_correct / val_total if val_total > 0 else 0.0
             print(f"Média Val: Loss={val_loss/len(valid_loader):.4f}, Acc={val_acc:.4f}")
             
-            if val_acc > best_acc:
-                best_acc = val_acc
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
                 epochs_no_improve = 0
                 torch.save(model.state_dict(), os.path.join(args.save_dir, 'best_baseline.pth'))
                 
@@ -149,8 +159,6 @@ def main():
                 torch.save(torch.cat(all_labels), os.path.join(args.save_dir, 'val_labels.pt'))
                 epochs_no_improve += 1
                 
-            # Atualizar o Learning Rate Scheduler
-            scheduler.step(val_acc)
             current_lr = optimizer.param_groups[0]['lr']
             print(f"Current LR: {current_lr:.2e}")
 
@@ -254,6 +262,30 @@ def main():
         test_features_t = torch.cat(all_features)
         test_logits_t = torch.cat(all_logits)
         test_labels_t = torch.cat(all_labels)
+        
+        # Otimizar Temperature Scaling na Validação
+        print("Otimizando Temperature Scaling na Validação...")
+        val_logits_ts = torch.load(os.path.join(args.save_dir, 'val_logits.pt')).to(device_str)
+        val_labels_ts = torch.load(os.path.join(args.save_dir, 'val_labels.pt')).to(device_str)
+        mask_ts = (val_labels_ts != -1)
+        val_logits_ts = val_logits_ts[mask_ts]
+        val_labels_ts = val_labels_ts[mask_ts]
+        
+        temperature = nn.Parameter(torch.ones(1, device=device_str))
+        ts_optimizer = torch.optim.LBFGS([temperature], lr=0.01, max_iter=50)
+        
+        def eval_ts():
+            ts_optimizer.zero_grad()
+            loss = nn.CrossEntropyLoss()(val_logits_ts / temperature, val_labels_ts)
+            loss.backward()
+            return loss
+            
+        ts_optimizer.step(eval_ts)
+        optimal_T = temperature.item()
+        print(f"Temperature Scaling Ajustado para T = {optimal_T:.4f}")
+        
+        # Escalar logits de teste
+        test_logits_t = test_logits_t / optimal_T
         
         # Probabilidades Softmax usadas pelo método Baseline (MSP)
         probs = F.softmax(test_logits_t, dim=-1)
