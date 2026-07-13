@@ -17,6 +17,7 @@ def get_parser():
     parser.add_argument('--save_dir', type=str, default='./outputs', help='Diretório para salvar os modelos')
     parser.add_argument('--epochs', type=int, default=None, help='Número de épocas (sobrescreve o config YAML)')
     parser.add_argument('--kshot', type=int, default=None, help='K-shot (sobrescreve o config YAML)')
+    parser.add_argument('--lr', type=float, default=None, help='Learning rate inicial')
     parser.add_argument('--use_sgr', action='store_true', help='Ativa o SGR para travar e salvar o threshold no modelo LAQDA')
     return parser
 
@@ -43,6 +44,12 @@ def main():
             config['sampler'] = {}
         config['sampler']['kshot'] = args.kshot
         args.save_dir = os.path.join(args.save_dir, f'kshot_{args.kshot}')
+        
+    # Sobrescreve LR se passado
+    if args.lr is not None:
+        if 'training' not in config:
+            config['training'] = {}
+        config['training']['learning_rate'] = args.lr
     
     set_seed(config.get('hardware', {}).get('seed', 42))
     device = config.get('hardware', {}).get('device', 0)
