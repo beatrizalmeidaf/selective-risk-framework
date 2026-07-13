@@ -77,12 +77,13 @@ class LaqdaEvaluator:
             
             use_sgr = self.config.get('metrics', {}).get('use_sgr', False)
             if use_sgr:
-                # Treinamento do Limiar de Risco SGR do LAQDA (Target Risk = 5%)
+                # Treinamento do Limiar de Risco SGR do LAQDA (Target Risk = 10%)
                 from methods.sgr.sgr import SGRController
                 sgr = SGRController(delta=0.001)
-                best_theta, _, _ = sgr.fit(confidences, preds, all_targets_t, r_star=0.05)
+                r_star = self.config.get('metrics', {}).get('sgr_r_star', 0.10)
+                best_theta, _, _ = sgr.fit(confidences, preds, all_targets_t, r_star=r_star)
                 self.model.sgr_threshold.fill_(best_theta)
-                print(f"LAQDA SGR Threshold (Risco 5%) travado em: {best_theta:.4f}")
+                print(f"LAQDA SGR Threshold (Risco {r_star*100}%) travado em: {best_theta:.4f}")
         
         return avg_loss, avg_acc, avg_f1
 
