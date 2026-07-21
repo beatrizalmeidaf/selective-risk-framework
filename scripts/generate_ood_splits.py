@@ -16,6 +16,29 @@ def get_classes_from_jsonl(filepath):
                     classes.add(data['class_name'])
     return list(classes)
 
+def count_classes_in_train(filepath):
+    """Conta exemplos por classe no train.jsonl de UM fold específico (não o global)."""
+    counts = {}
+    if not os.path.exists(filepath):
+        return counts
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            if not line.strip():
+                continue
+            data = json.loads(line)
+            label = data.get('label') or data.get('class_name')
+            if label is not None:
+                counts[label] = counts.get(label, 0) + 1
+    return counts
+
+# Maior kshot usado no pipeline (scripts/run_all_pt.sh: KSHOTS=(1 5 10)). Uma classe
+# com menos exemplos de treino que isso num fold específico não sustenta um support
+# set real: prepare_support_set (methods/laqda/inference/infer.py) precisaria
+# duplicar (kshot > n) ou, no caso extremo de 0 exemplos, falhar — o que antes
+# corrompia silenciosamente o alinhamento suporte/query em vez de avisar (ver
+# RulingBRCorpus fold 01 "direito financeiro" / fold 02 "direito notarial").
+MIN_TRAIN_EXAMPLES = 10
+
 def main():
     base_dirs = ["data/datasets/datasets-br-nlp", "data/datasets/datasets-en-nlp"]
     output_file = "configs/ood_splits.json"
@@ -60,22 +83,65 @@ def main():
         # Criação de 5 divisões (folds) sobre as classes (20% das classes serão OOD por fold).
         num_folds = 5
         fold_size = math.ceil(total_classes / num_folds)
-        
+
         splits_dict[corpus_name] = {}
-        
+
+        # Corpora com < 3 classes (ex: binários de sentimento/hate: Ofensivo vs
+        # Não Ofensivo) não suportam holdout de classe: reter 1 classe como OOD já
+        # deixa só 1 classe ID, tornando a classificação trivial (só existe uma
+        # resposta possível -> 100% de acurácia garantido, não é o modelo aprendendo
+        # nada). Nesses casos mantemos todas as classes como ID nos 5 folds; a
+        # avaliação de OOD desses corpora passa a depender só do far-OOD
+        # (few_shot_far_ood/build_far_ood_split.py), não do holdout por classe aqui.
+        if total_classes < 3:
+            print(f"  [Aviso] {corpus_name}: {total_classes} classe(s) totais — "
+                  f"holdout por classe desativado (usar apenas far-OOD para este corpus).")
+            for i in range(num_folds):
+                fold_id = str(i + 1).zfill(2)
+                splits_dict[corpus_name][fold_id] = {
+                    "id_classes": all_classes,
+                    "ood_classes": []
+                }
+            continue
+
         for i in range(num_folds):
             fold_id = str(i + 1).zfill(2) # "01", "02", "03", "04", "05"
             start_idx = i * fold_size
             end_idx = min((i + 1) * fold_size, total_classes)
-            
+
             ood_classes = all_classes[start_idx:end_idx]
             id_classes = [c for c in all_classes if c not in ood_classes]
-            
+
+            # Classes raras (cauda longa) podem ter poucos ou zero exemplos NUM FOLD
+            # ESPECÍFICO mesmo aparecendo em all_classes (que veio de train+valid+test
+            # do fold 01 apenas). Reclassificamos aqui usando o train.jsonl real DESTE
+            # fold: id_classes sem exemplos suficientes viram ood_classes — o mesmo
+            # destino que StandardDataModule já dá a qualquer classe fora de
+            # id_classes (class_id=-1), então isso não muda o pipeline, só evita
+            # prometer uma classe ID que não tem como virar support set.
+            fold_train_path = os.path.join(os.path.dirname(fold_1_dir), fold_id, "train.jsonl")
+            fold_counts = count_classes_in_train(fold_train_path)
+
+            reassigned = [c for c in id_classes if fold_counts.get(c, 0) < MIN_TRAIN_EXAMPLES]
+            if reassigned:
+                id_classes = [c for c in id_classes if c not in reassigned]
+                ood_classes = ood_classes + reassigned
+                for c in reassigned:
+                    print(f"  [Aviso] {corpus_name} fold {fold_id}: classe '{c}' tem "
+                          f"{fold_counts.get(c, 0)} exemplo(s) de treino (< {MIN_TRAIN_EXAMPLES}) "
+                          f"— movida de id_classes para ood_classes.")
+
+            if len(id_classes) < 2:
+                print(f"  [Aviso] {corpus_name} fold {fold_id}: só sobrou(ram) "
+                      f"{len(id_classes)} classe(s) ID depois de remover as raras — "
+                      f"classificação vai ficar trivial/degenerada nesse fold. "
+                      f"Revisar manualmente.")
+
             splits_dict[corpus_name][fold_id] = {
                 "id_classes": id_classes,
                 "ood_classes": ood_classes
             }
-            
+
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(splits_dict, f, indent=4, ensure_ascii=False)
         
