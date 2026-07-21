@@ -1,4 +1,5 @@
 import os
+import math
 import torch
 import json
 import zipfile
@@ -74,8 +75,26 @@ class LaqdaInferencer:
             sentences = class_buckets[label_name]
             
             if not sentences:
-                print(f"WARNING: No sentences for class {label_name}")
-                continue
+                # Pular a classe aqui (comportamento antigo) encolhe fixed_support_text
+                # abaixo de nway*kshot em silêncio. LaqdaModule.forward fatia
+                # text_embedding em suporte/query usando support_size = nway*kshot
+                # (calculado a partir de nway = len(label_text_list), não do tamanho
+                # real de fixed_support_text) — com 1 classe faltando, esse corte cai
+                # 1 posição errado: rouba a 1ª amostra de query pra virar "suporte" da
+                # classe vazia e desalinha TODO o resto do batch por 1. Pra kshot=5/10
+                # isso ainda quebra alto com RuntimeError de reshape (visível); pra
+                # kshot=1 o reshape "funciona" por coincidência de tamanho e o erro só
+                # aparece muito depois, num IndexError de mask sem relação aparente —
+                # ou pior, sem erro nenhum, com métricas silenciosamente erradas.
+                # Falhar alto aqui, na causa raiz, é sempre preferível a essa corrupção
+                # silenciosa (ver RulingBRCorpus fold 01 "direito financeiro" / fold 02
+                # "direito notarial": 0 exemplos no train.jsonl daquele fold).
+                raise ValueError(
+                    f"Classe '{label_name}' está em labels_dict (id_classes) mas tem "
+                    f"ZERO exemplos em {train_file}. Não é seguro montar o support set "
+                    f"faltando uma classe — corrija configs/ood_splits.json (exclua essa "
+                    f"classe do id_classes deste fold) ou reveja os dados desse fold."
+                )
 
             if len(sentences) >= kshot:
                 selected = random.sample(sentences, kshot)
@@ -236,8 +255,16 @@ class LaqdaInferencer:
         ]
         
         for risk_pct, attr_name in thresholds_to_check:
-            if hasattr(model, attr_name) and getattr(model, attr_name).item() != -float('inf'):
-                sgr_th = getattr(model, attr_name).item()
+            if not hasattr(model, attr_name):
+                continue
+            sgr_th = getattr(model, attr_name).item()
+            # -inf = threshold nunca calibrado (default do buffer); +inf = SGR
+            # calibrou e não achou threshold viável no risco alvo (ver
+            # evaluator.py, sgr.fit pode retornar theta=inf). Os dois casos são
+            # "sem threshold aplicável" — só != -inf deixava o +inf passar como
+            # se fosse válido, gerando confidences < inf (100% abstenção) e um
+            # relatório com valor infinito que quebrava o print em reporter.py.
+            if math.isfinite(sgr_th):
                 abstained = (confidences < sgr_th)
                 abstention_rate = abstained.float().mean().item()
                 
@@ -388,9 +415,19 @@ class LaqdaInferencer:
         def _score_split(dl):
             """Calcula o score MC Dropout (mean_sim - var_sim, N passes) para um split."""
             split_preds, split_confidences, split_targets = [], [], []
-            # Ativar modo treino APENAS no encoder para manter dropout ativo
-            # (o sampler transdutivo fica desativado por estar em modo eval no laqda_module)
-            model.train()
+            # Ativar dropout estocástico SEM ligar o modo treino do LaqdaModule: model.train()
+            # (chamado no nn.Module raiz) cascateia self.training=True pro laqda_module também,
+            # o que reativa o TransductiveQDASampler (só deveria rodar durante o loop de
+            # treino real — ver comentário em laqda_module.py). Em inferência o batch de
+            # query não tem o formato de episódio (nway*qshot contíguo) que o sampler espera,
+            # e ele quebra com RuntimeError de reshape/topk assim que o batch não bate esse
+            # formato. model.eval() primeiro mantém LaqdaModule.training=False (sampler
+            # desligado); religamos só as camadas de Dropout depois, que é o que realmente
+            # precisa ficar estocástico para o MC Dropout funcionar.
+            model.eval()
+            for module in model.modules():
+                if isinstance(module, torch.nn.Dropout):
+                    module.train()
             with torch.no_grad():
                 for texts, labels in tqdm(dl):
                     input_text = support_text + list(texts)
