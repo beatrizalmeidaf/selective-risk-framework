@@ -16,7 +16,15 @@ class LabelAwareEncoder(nn.Module):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         config = AutoConfig.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name, config=config, trust_remote_code=True)
-        
+
+        # Corpora com muitas classes (ex: MMLU, 57-way) geram episódios com
+        # milhares de textos (nway * (kshot + qshot)) codificados num único
+        # forward pass. Gradient checkpointing recomputa as ativações no backward
+        # em vez de mantê-las todas em memória, cortando o pico de VRAM às custas
+        # de mais compute — evita o CUDA OOM que travava kshot=5/10 nesses casos.
+        if hasattr(self.model, "gradient_checkpointing_enable"):
+            self.model.gradient_checkpointing_enable()
+
         self.hidden_size = config.hidden_size
         self.lin = nn.Linear(self.hidden_size, self.hidden_size)
         
