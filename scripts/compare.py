@@ -69,11 +69,17 @@ SORT_KEYS = {
 # ──────────────────────────────────────────────────────────────────────────────
 
 def resolve_dataset_metadata(corpus: str):
-    """Procura o dataset nas pastas data/datasets para inferir Idioma e Categoria."""
+    """Procura o dataset nas pastas data/datasets para inferir Idioma e Categoria.
+
+    Corpus com sufixo '_far' (ex: EniacCorpus_far) apontam para o mesmo dataset
+    base em disco (a variante far-OOD vive em few_shot_far_ood/ dentro da MESMA
+    pasta do corpus) — remove o sufixo antes de buscar.
+    """
     base_data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "datasets")
-    search_pattern = os.path.join(base_data, "datasets-*-nlp", "*", corpus)
+    base_corpus = corpus[:-len("_far")] if corpus.endswith("_far") else corpus
+    search_pattern = os.path.join(base_data, "datasets-*-nlp", "*", base_corpus)
     matches = glob.glob(search_pattern)
-    
+
     if not matches:
         return "Unknown", "Unknown"
         
