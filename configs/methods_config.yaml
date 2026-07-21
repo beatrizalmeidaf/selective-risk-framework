@@ -21,6 +21,10 @@ laqda:
     nway: 2
     qshot: 25
     kshots: [1, 5, 10]
+    # Cap no total de consultas por episódio (nway * q). Corpora com poucas classes
+    # (nway * qshot <= 500) não são afetados; corpora com muitas classes (ex: MMLU,
+    # 57-way) têm o q por classe reduzido para caber no cap e não estourar VRAM.
+    max_query_total: 500
 
   hardware:
     seed: 42
