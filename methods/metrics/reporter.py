@@ -70,7 +70,15 @@ class MetricsReporter:
             print(f"  *** {ood_fraction*100:.1f}% do split é OOD -> 'accuracy' global tem teto teórico de {ceiling:.4f}, mesmo com classificador perfeito nas classes ID. ***")
             print(f"  *** Use 'id_only_accuracy' ({id_only_accuracy:.4f}) para medir a qualidade real do classificador. ***")
         for k, v in report.items():
-            print(f"  - {k}: {v:.4f}")
+            # v pode ter virado string acima (inf/nan viram "inf"/"nan" para caber no
+            # JSON) — formatar com :.4f nesse caso derruba o processo ANTES do
+            # json.dump abaixo, perdendo um relatório inteiro (treino+inferência) só
+            # por causa do print. Ver methods/laqda/inference/infer.py:evaluate_ood,
+            # onde um threshold SGR = +inf (fit sem solução viável) chegava aqui.
+            if isinstance(v, (int, float)):
+                print(f"  - {k}: {v:.4f}")
+            else:
+                print(f"  - {k}: {v}")
             
         # Salvar se diretório for providenciado
         if self.save_dir:
