@@ -70,11 +70,20 @@ class LaqdaTrainer:
                 break
 
             batch_loss, batch_acc, batch_f1 = [], [], []
+            consecutive_failures = 0
+            # Falha catastrófica (ex: CUDA OOM) repetida em toda batch travava
+            # silenciosamente aqui: o except engolia o erro, a época "terminava"
+            # com Loss=0.0000 (lista vazia -> np.mean condicional cai pra 0) e o
+            # treino seguia por dezenas de épocas fingindo funcionar, salvando um
+            # "best_model" que na prática nunca recebeu um único gradiente real
+            # (ver outputs/final_eval/.../MMLU.../kshot_5|10 antes desta correção).
+            # Threshold aqui aborta ALTO e CEDO em vez de desperdiçar o job inteiro.
+            max_consecutive_failures = 20
 
             for i, batch in tqdm(enumerate(tr_dataloader), total=len(tr_dataloader), desc=f"Train Ep {epoch}"):
                 self.optimizer.zero_grad()
                 support_set, query_set, episode_internal_ids = batch
-                
+
                 label_text = [id2label.get(int(el), str(el)) for el in episode_internal_ids]
                 text, one_hot_labels = self.evaluator._format_batch(support_set, query_set, episode_internal_ids, labels_dict)
                 one_hot_labels_tensor = torch.tensor(one_hot_labels, dtype=torch.float).to(self.device)
@@ -88,8 +97,23 @@ class LaqdaTrainer:
                         model_outputs = self.model(text, label_text)
                         loss, p, r, f1, acc, auc, topk_acc = self.loss_fn(model_outputs, query_labels_tensor)
                 except Exception as e:
-                    print(f"Train Error batch {i}: {e}")
+                    is_oom = "out of memory" in str(e).lower()
+                    print(f"Train Error batch {i}{' [OOM]' if is_oom else ''}: {e}")
+                    if is_oom:
+                        # Libera blocos cacheados para dar chance ao próximo batch;
+                        # sem isso a fragmentação faz TODO batch seguinte falhar também.
+                        torch.cuda.empty_cache()
+                    consecutive_failures += 1
+                    if consecutive_failures >= max_consecutive_failures:
+                        raise RuntimeError(
+                            f"{consecutive_failures} batches consecutivos falharam "
+                            f"(último erro: {e}). Abortando em vez de completar o "
+                            f"treino silenciosamente sem gradientes reais — reduza "
+                            f"kshot/qshot/max_query_total ou o batch de encoding."
+                        ) from e
                     continue
+
+                consecutive_failures = 0
 
                 if torch.isnan(loss) or torch.isinf(loss):
                     continue
@@ -98,10 +122,17 @@ class LaqdaTrainer:
                 self.scaler.scale(loss).backward()
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
-                
+
                 batch_loss.append(loss.item())
                 batch_acc.append(acc)
                 batch_f1.append(f1)
+
+            if not batch_loss:
+                raise RuntimeError(
+                    f"Época {epoch}: nenhum batch de treino foi bem-sucedido. "
+                    f"O modelo não recebeu nenhum gradiente real nesta época — "
+                    f"abortando em vez de salvar um checkpoint não treinado."
+                )
 
             avg_loss = np.mean(batch_loss) if batch_loss else 0
             avg_acc = np.mean(batch_acc) if batch_acc else 0
