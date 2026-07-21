@@ -1,3 +1,4 @@
+import math
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -54,8 +55,20 @@ class LaqdaEvaluator:
                     all_targets.append(torch.argmax(query_labels_tensor, dim=1).cpu())
                     
                 except Exception as e:
-                    print(f"Eval Error: {e}")
+                    is_oom = "out of memory" in str(e).lower()
+                    print(f"Eval Error{' [OOM]' if is_oom else ''}: {e}")
+                    if is_oom:
+                        torch.cuda.empty_cache()
                     continue
+
+        if not batch_loss:
+            # Sem isso, val_loss cai pra 0 (np.mean condicional) e o trainer
+            # interpreta erroneamente como "melhor loss de validação já visto",
+            # travando para sempre um checkpoint que nunca foi de fato avaliado.
+            raise RuntimeError(
+                f"Época {epoch}: nenhum batch de validação foi bem-sucedido. "
+                f"Abortando em vez de reportar val_loss=0 (falso 'melhor modelo')."
+            )
 
         avg_loss = np.mean(batch_loss) if batch_loss else 0
         avg_acc = np.mean(batch_acc) if batch_acc else 0
@@ -89,13 +102,21 @@ class LaqdaEvaluator:
                 sgr = SGRController(delta=0.05)
                 r_star = self.config.get('metrics', {}).get('sgr_r_star', 0.10)
                 best_theta, _, _ = sgr.fit(confidences, preds, all_targets_t, r_star=r_star)
-                self.model.sgr_threshold_10.fill_(best_theta)
+                # sgr.fit retorna theta=+inf quando NENHUM threshold atinge o risco
+                # alvo (bound acima do target) — não é um limiar válido. Gravar +inf
+                # no buffer fazia a inferência (evaluate_ood) tratá-lo como calibrado
+                # (só excluía o sentinela -inf), gerando confidences < inf = 100%
+                # abstenção e um valor infinito que quebrava o relatório na saída.
+                # Mantemos -inf (mesmo sentinela do default) para sinalizar "sem
+                # threshold viável", igual ao restante do código já assume.
+                self.model.sgr_threshold_10.fill_(best_theta if math.isfinite(best_theta) else -float('inf'))
                 print(f"LAQDA SGR Threshold (Risco {r_star*100}%) travado em: {best_theta:.4f}")
-                
+
                 # Exibir coverage para outros níveis de risco (análise few-shot)
                 for r_test in [0.15, 0.20, 0.25]:
                     t_val, b_val, c_val = sgr.fit(confidences, preds, all_targets_t, r_star=r_test)
                     print(f"  [Info] SGR alcançável p/ risco {r_test*100}% -> Cobertura: {c_val:.4f}")
+                    t_val = t_val if math.isfinite(t_val) else -float('inf')
                     if r_test == 0.15 and hasattr(self.model, 'sgr_threshold_15'): self.model.sgr_threshold_15.fill_(t_val)
                     if r_test == 0.20 and hasattr(self.model, 'sgr_threshold_20'): self.model.sgr_threshold_20.fill_(t_val)
                     if r_test == 0.25 and hasattr(self.model, 'sgr_threshold_25'): self.model.sgr_threshold_25.fill_(t_val)
