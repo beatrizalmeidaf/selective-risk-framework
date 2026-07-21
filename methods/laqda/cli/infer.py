@@ -37,10 +37,14 @@ def get_parser():
     return parser
 
 def main():
+    # Ver comentário equivalente em methods/laqda/cli/train.py: mitiga fragmentação
+    # do alocador CUDA em episódios grandes (corpora com muitas classes).
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
     # Otimização H100: Ativar TensorFloat-32 (TF32) globalmente
     torch.backends.cudnn.allow_tf32 = True
     torch.backends.cuda.matmul.allow_tf32 = True
-    
+
     args = get_parser().parse_args()
     config = load_config(args.config)
     config = config.get('laqda', config)
