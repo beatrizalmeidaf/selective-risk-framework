@@ -22,10 +22,17 @@ def get_parser():
     return parser
 
 def main():
+    # Mitiga fragmentação do alocador CUDA em episódios grandes (corpora com muitas
+    # classes, ex: MMLU 57-way), onde blocos de tamanhos variáveis (kshot muda a cada
+    # sweep) alocados/liberados repetidamente fragmentam a VRAM e causam OOM mesmo
+    # com memória livre agregada suficiente. Precisa ser setado ANTES da primeira
+    # alocação CUDA (o allocator só lê a env var na sua inicialização preguiçosa).
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
     # Otimização H100: Ativar TensorFloat-32 (TF32) globalmente
     torch.backends.cudnn.allow_tf32 = True
     torch.backends.cuda.matmul.allow_tf32 = True
-    
+
     args = get_parser().parse_args()
     config = load_config(args.config)
     config = config.get('laqda', config)
@@ -71,14 +78,20 @@ def main():
     config.setdefault('sampler', {})['nway'] = total_classes
     
     sampler_cfg = config.get('sampler', {})
+    # Cap no total de consultas por episódio (nway * q_efetivo). Sem isso, corpora
+    # com muitas classes (ex: MMLU, 57-way) multiplicam qshot por nway e geram
+    # episódios de milhares de textos que estouram a VRAM — ver
+    # methods/laqda/datamodules/episodic_sampler.py. None desativa o cap.
+    max_query_total = sampler_cfg.get('max_query_total', 500)
     train_sampler = EpisodicKShotSampler(
-        datamodule.train_dataset, 
+        datamodule.train_dataset,
         episodes_per_epoch=config.get('training', {}).get('episode_train', 100),
         k=sampler_cfg.get('nway', 2),
         n=sampler_cfg.get('kshot', 5),
-        q=sampler_cfg.get('qshot', 25)
+        q=sampler_cfg.get('qshot', 25),
+        max_query_total=max_query_total
     )
-    
+
     valid_sampler = None
     if datamodule.valid_dataset is not None:
         valid_sampler = EpisodicKShotSampler(
@@ -87,6 +100,7 @@ def main():
             k=sampler_cfg.get('nway', 2),
             n=sampler_cfg.get('kshot', 5),
             q=sampler_cfg.get('qshot', 25),
+            max_query_total=max_query_total,
             seed=42 # Fixar semente para validação ser determinística e comparável
         )
         
