@@ -118,8 +118,12 @@ laqda_all_strategies_present() {
 
 for FOLD in ${FOLDS[@]}; do
     for K in ${KSHOTS[@]}; do
-        SAVE_DIR="outputs/final_eval/${LANG_DIR}/laqda/${CORPUS}/fold_\${FOLD}"
-        FAR_SAVE_DIR="outputs/final_eval/${LANG_DIR}/laqda/${CORPUS}_far/fold_\${FOLD}"
+        # LAQDA grava em final_eval_fixed/ (fix do bug de gradient checkpointing
+        # que zerava o gradiente das camadas destravadas do BERT — ver
+        # methods/laqda/models/encoder.py). Baseline não tem esse bug, continua
+        # sendo lido de final_eval/ (não precisa re-treinar).
+        SAVE_DIR="outputs/final_eval_fixed/${LANG_DIR}/laqda/${CORPUS}/fold_\${FOLD}"
+        FAR_SAVE_DIR="outputs/final_eval_fixed/${LANG_DIR}/laqda/${CORPUS}_far/fold_\${FOLD}"
         mkdir -p "\${SAVE_DIR}"
 
         NEED_TRAIN=1
