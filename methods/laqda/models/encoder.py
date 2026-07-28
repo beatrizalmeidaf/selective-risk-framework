@@ -22,8 +22,19 @@ class LabelAwareEncoder(nn.Module):
         # forward pass. Gradient checkpointing recomputa as ativações no backward
         # em vez de mantê-las todas em memória, cortando o pico de VRAM às custas
         # de mais compute — evita o CUDA OOM que travava kshot=5/10 nesses casos.
+        #
+        # use_reentrant=False é obrigatório aqui: com num_freeze>0 as camadas
+        # 0..num_freeze-1 (e os embeddings) ficam com requires_grad=False, então a
+        # ativação que ENTRA na primeira camada destravada (ex: layer.6) vem de um
+        # segmento checkpointado sem nenhum input exigindo grad. O checkpoint
+        # reentrant (default legado) não consegue reconstruir o grafo de
+        # backward nesse caso — planta "nenhum input requer grad" e, quando
+        # nenhuma camada treinável SEM checkpoint vem depois (ex: la=0, onde o
+        # embedding final é o CLS cru do BERT, sem passar por self.lin/self.attention),
+        # a perda inteira fica sem grad_fn e o backward() explode. use_reentrant=False
+        # usa a implementação não-reentrante, que não tem essa limitação.
         if hasattr(self.model, "gradient_checkpointing_enable"):
-            self.model.gradient_checkpointing_enable()
+            self.model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
         self.hidden_size = config.hidden_size
         self.lin = nn.Linear(self.hidden_size, self.hidden_size)

@@ -13,6 +13,14 @@ def get_parser():
     parser.add_argument('--model_paths', type=str, nargs='+', required=True, help='Caminho(s) para os pesos')
     parser.add_argument('--output_dir', type=str, default='./results', help='Diretório de saída para predições brutas')
     parser.add_argument('--kshot', type=int, default=None, help='K-shot (sobrescreve o config YAML)')
+    parser.add_argument('--la', type=int, default=None, choices=[0, 1],
+                         help='Ablação: DEVE bater com o --la usado no treino deste checkpoint '
+                              '(sobrescreve o config YAML). O encoder Label-Aware sempre aloca os '
+                              'pesos de cross-attention independente de la, então load_state_dict '
+                              'nunca falha por mismatch — mas se o checkpoint foi treinado com '
+                              '--la 0, esses pesos nunca receberam gradiente (ficam no init '
+                              'aleatório); reconstruir o modelo aqui com la=1 (padrão do YAML) os '
+                              'ativa na inferência, corrompendo silenciosamente os embeddings.')
     parser.add_argument(
         '--score_mode',
         type=str,
@@ -54,7 +62,10 @@ def main():
             config['sampler'] = {}
         config['sampler']['kshot'] = args.kshot
         args.output_dir = os.path.join(args.output_dir, f'kshot_{args.kshot}')
-    
+
+    if args.la is not None:
+        config.setdefault('model', {})['la'] = args.la
+
     device = config.get('hardware', {}).get('device', 0)
     device_str = f'cuda:{device}' if torch.cuda.is_available() and device >= 0 else 'cpu'
     

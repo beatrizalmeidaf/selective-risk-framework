@@ -19,6 +19,10 @@ def get_parser():
     parser.add_argument('--kshot', type=int, default=None, help='K-shot (sobrescreve o config YAML)')
     parser.add_argument('--lr', type=float, default=None, help='Learning rate inicial')
     parser.add_argument('--use_sgr', action='store_true', help='Ativa o SGR para travar e salvar o threshold no modelo LAQDA')
+    parser.add_argument('--la', type=int, default=None, choices=[0, 1], help='Ablação: liga (1) ou desliga (0) o encoder Label-Aware (sobrescreve o config YAML)')
+    parser.add_argument('--disable_transductive_sampler', action='store_true', help='Ablação: desliga o TransductiveQDASampler (aumento de protótipo via vizinhos da query) durante o treino, deixando o protótipo = média pura do suporte')
+    parser.add_argument('--sampler_mode', type=str, default=None, choices=['knn', 'sinkhorn'], help='Mecanismo de reestimação de protótipo no treino: "knn" (rho-vizinhos, padrão) ou "sinkhorn" (OT entrópico, fiel ao LAQDA original)')
+    parser.add_argument('--rho', type=int, default=None, help='Análise de sensibilidade: tamanho da vizinhança do aumento por consulta (sobrescreve model.k do YAML)')
     return parser
 
 def main():
@@ -61,7 +65,18 @@ def main():
         if 'training' not in config:
             config['training'] = {}
         config['training']['learning_rate'] = args.lr
-    
+
+    # Overrides de ablação (Seção de Ablação do paper): variam a arquitetura
+    # LAQDA em si, não hiperparâmetros de treino.
+    if args.la is not None:
+        config.setdefault('model', {})['la'] = args.la
+    if args.disable_transductive_sampler:
+        config.setdefault('model', {})['use_transductive_sampler'] = False
+    if args.sampler_mode is not None:
+        config.setdefault('model', {})['sampler_mode'] = args.sampler_mode
+    if args.rho is not None:
+        config.setdefault('model', {})['k'] = args.rho
+
     set_seed(config.get('hardware', {}).get('seed', 42))
     device = config.get('hardware', {}).get('device', 0)
     device_str = f'cuda:{device}' if torch.cuda.is_available() and device >= 0 else 'cpu'
@@ -122,7 +137,9 @@ def main():
         qshot=sampler_cfg.get('qshot', 25),
         la=model_cfg.get('la', 1),
         num_freeze=model_cfg.get('num_freeze', 6),
-        k=model_cfg.get('k', 5)
+        k=model_cfg.get('k', 5),
+        use_transductive_sampler=model_cfg.get('use_transductive_sampler', True),
+        sampler_mode=model_cfg.get('sampler_mode', 'knn')
     )
     model.to(device_str)
     
