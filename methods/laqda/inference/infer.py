@@ -37,7 +37,14 @@ class LaqdaInferencer:
                 global_model_name = global_config.get('model', {}).get(f'encoder_name_{lang}', 'bert-base-uncased')
             else:
                 global_model_name = 'bert-base-uncased'
-            
+            # Mesmo override de train.py: sem a variavel, o valor do YAML e'
+            # preservado. Sem isto, treinar com um encoder alternativo produz
+            # checkpoints que a inferencia nao consegue carregar.
+            _enc_override = os.environ.get('LAQDA_ENCODER')
+            if _enc_override:
+                global_model_name = _enc_override
+            print(f"Encoder (infer): {global_model_name}", flush=True)
+
             m = LaqdaModule(
                 model_name=global_model_name,
                 nway=sampler_cfg.get('nway', 2),
@@ -123,7 +130,10 @@ class LaqdaInferencer:
         sgr = SGRController(delta=0.05)
         sgr_extras = {}
 
-        for risk_pct, r_star in [(10, 0.10), (15, 0.15), (20, 0.20), (25, 0.25)]:
+        # m e' o tamanho do conjunto de calibracao held-out; e' o parametro que
+        # governa a folga do bound e precisa ser reportado junto da cobertura.
+        sgr_extras['sgr_calib_m'] = int(len(val_confidences))
+        for risk_pct, r_star in [(5, 0.05), (10, 0.10), (15, 0.15), (20, 0.20), (25, 0.25)]:
             theta, bound, cov_val = sgr.fit(val_confidences, val_preds, val_targets, r_star=r_star)
             if theta == float('inf'):
                 print(f"  [Info] SGR r*={r_star:.2f}: nenhum threshold viável (bound acima do alvo).")
@@ -196,7 +206,7 @@ class LaqdaInferencer:
     # =========================================================================
     # MÉTODO ORIGINAL: Score = -min_dist (similaridade cosseno ao protótipo mais próximo)
     # =========================================================================
-    def evaluate_ood(self, dataset, support_text: list, labels_dict: dict, batch_size=32, save_dir='./results'):
+    def evaluate_ood(self, dataset, support_text: list, labels_dict: dict, batch_size=32, save_dir='./results', val_dataset=None):
         id2label = {v: k for k, v in labels_dict.items()}
         label_text_list = [id2label[i] for i in range(len(labels_dict))]
         
@@ -245,6 +255,32 @@ class LaqdaInferencer:
         # id_only_accuracy é calculado centralmente em compute_accuracy_f1
         # (methods/metrics/classification.py) a partir de targets/preds.
         sgr_extras = {}
+
+        # Calibração SGR held-out para o score DEFAULT. Antes, este caminho lia
+        # thresholds dos buffers do modelo, que são gravados no fim do treino
+        # sobre as queries episódicas de validação -- o mesmo fluxo monitorado
+        # pelo early stopping, portanto NÃO disjunto. Aqui calibramos no split
+        # de validação (só ID) e aplicamos ao teste sem alteração, que é a
+        # condição que a garantia exige.
+        if val_dataset is not None:
+            print("Default score: calibrando thresholds SGR no validation set (held-out)...")
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+            v_dists, v_targets = [], []
+            with torch.no_grad():
+                for texts, labels in tqdm(val_loader):
+                    input_text = support_text + list(texts)
+                    kshot = self.config.get('sampler', {}).get('kshot', 5)
+                    mo = model(input_text, label_text_list, kshot=kshot)
+                    d, _, _, _ = compute_prototype_scores(mo[1], mo[0])
+                    v_dists.append(d.cpu()); v_targets.append(labels.cpu())
+            v_dists_t = torch.cat(v_dists); v_targets_t = torch.cat(v_targets)
+            v_min, v_preds = torch.min(v_dists_t, dim=1)
+            v_conf = -v_min
+            v_id = v_targets_t != -1
+            sgr_extras.update(self._fit_and_apply_sgr(
+                v_conf[v_id], v_preds[v_id], v_targets_t[v_id],
+                confidences, preds, all_targets_t, id_mask, ood_mask
+            ))
 
         # Verificar se modelo tem limiares SGR travados (LAQDA com SGR)
         thresholds_to_check = [
@@ -810,6 +846,32 @@ class LaqdaInferencer:
         # id_only_accuracy é calculado centralmente em compute_accuracy_f1
         # (methods/metrics/classification.py) a partir de targets/preds.
         sgr_extras = {}
+
+        # Calibração SGR held-out para o score DEFAULT. Antes, este caminho lia
+        # thresholds dos buffers do modelo, que são gravados no fim do treino
+        # sobre as queries episódicas de validação -- o mesmo fluxo monitorado
+        # pelo early stopping, portanto NÃO disjunto. Aqui calibramos no split
+        # de validação (só ID) e aplicamos ao teste sem alteração, que é a
+        # condição que a garantia exige.
+        if val_dataset is not None:
+            print("Default score: calibrando thresholds SGR no validation set (held-out)...")
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+            v_dists, v_targets = [], []
+            with torch.no_grad():
+                for texts, labels in tqdm(val_loader):
+                    input_text = support_text + list(texts)
+                    kshot = self.config.get('sampler', {}).get('kshot', 5)
+                    mo = model(input_text, label_text_list, kshot=kshot)
+                    d, _, _, _ = compute_prototype_scores(mo[1], mo[0])
+                    v_dists.append(d.cpu()); v_targets.append(labels.cpu())
+            v_dists_t = torch.cat(v_dists); v_targets_t = torch.cat(v_targets)
+            v_min, v_preds = torch.min(v_dists_t, dim=1)
+            v_conf = -v_min
+            v_id = v_targets_t != -1
+            sgr_extras.update(self._fit_and_apply_sgr(
+                v_conf[v_id], v_preds[v_id], v_targets_t[v_id],
+                confidences, preds, all_targets_t, id_mask, ood_mask
+            ))
 
         # SGR próprio do X-Mahalanobis: os thresholds salvos no modelo (buffers)
         # foram calibrados no score canônico (cosseno x tau) e NÃO transferem

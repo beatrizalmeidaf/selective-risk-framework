@@ -98,7 +98,8 @@ def main():
         print("=" * 60)
         inferencer.evaluate_ood(
             test_dataset, support_text, labels_dict,
-            batch_size=32, save_dir=args.output_dir
+            batch_size=32, save_dir=args.output_dir,
+            val_dataset=val_dataset
         )
 
     if run_margin:

@@ -43,6 +43,10 @@ for CATEGORY in "$BASE_DATASET_DIR"/*; do
 . /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
 cd /home/user_beatrizalmeida/selective-risk-framework
 
+# active_language do YAML global e' "pt" e nao deriva do dataset; sem esta linha
+# um corpus em ingles treina com BERTimbau sem erro e com numeros errados.
+export LAQDA_ENCODER=google-bert/bert-base-uncased
+
 for FOLD in ${FOLDS[@]}; do
     for K in ${KSHOTS[@]}; do
         SAVE_DIR="outputs/final_eval/${LANG_DIR}/baseline/${CORPUS}/fold_\${FOLD}"
@@ -86,6 +90,10 @@ EOF
 
 . /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
 cd /home/user_beatrizalmeida/selective-risk-framework
+
+# active_language do YAML global e' "pt" e nao deriva do dataset; sem esta linha
+# um corpus em ingles treina com BERTimbau sem erro e com numeros errados.
+export LAQDA_ENCODER=google-bert/bert-base-uncased
 
 for FOLD in ${FOLDS[@]}; do
     for K in ${KSHOTS[@]}; do

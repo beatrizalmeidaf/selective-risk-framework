@@ -4,6 +4,21 @@ Esse repositório contém a implementação do framework de avaliação e mitiga
 
 ---
 
+## Página do Projeto (GitHub Pages)
+
+A página pública do projeto — abstract, pipeline, gráficos interativos e todas as tabelas de resultados do artigo ACL — fica em [`site/`](site/).
+
+*   **Pré-visualizar localmente**:
+    ```bash
+    python -m http.server 8000 --directory site
+    # abre http://localhost:8000
+    ```
+*   **Publicar**: o workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publica a pasta `site/` a cada push na `main`. É necessário configurar uma única vez em **Settings → Pages → Source: GitHub Actions**. A URL final é `https://beatrizalmeidaf.github.io/selective-risk-framework/`.
+
+Os números da página são transcritos de `docs/conferences/ACL/acl_latex.tex`; ao atualizar o artigo, atualize também os blocos de dados `AURC` e `COV` em `site/index.html`.
+
+---
+
 ## Estrutura do Framework
 
 A estrutura do projeto está organizada de forma modular:

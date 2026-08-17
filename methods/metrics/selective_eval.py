@@ -63,19 +63,41 @@ def compute_risk_at_coverage(confidences, preds, targets, target_coverages=[0.8,
         
     return results
 
-def compute_sgr_coverage_at_risk(confidences, preds, targets, target_risks=[0.01, 0.05, 0.10]):
+def compute_sgr_coverage_at_risk(confidences, preds, targets, target_risks=[0.01, 0.05, 0.10],
+                                 calib=None, delta=0.05):
     """
-    Usa o SGR (Selection with Guaranteed Risk) para achar qual a cobertura retida 
-    para travar um risco máximo (ex: 1%, 5%, 10%).
+    Cobertura retida ao travar um risco máximo (ex: 1%, 5%, 10%) via SGR.
+
+    ATENÇÃO — duas quantidades diferentes:
+
+      * calib=None (padrão, comportamento histórico): o limiar é escolhido
+        sobre os MESMOS arrays que são avaliados. Isso é um ponto de operação
+        IN-SAMPLE ("cobertura atingível"), NÃO um certificado — a garantia de
+        Geifman & El-Yaniv (2017) pressupõe um conjunto de calibração i.i.d.
+        independente do conjunto avaliado. Serve para comparar métodos entre si
+        sob procedimento idêntico, e é o que gerou as tabelas já publicadas.
+
+      * calib=(conf_cal, preds_cal, targets_cal): o limiar é ajustado no split
+        de calibração (validação ID) e aplicado sem alteração ao conjunto de
+        teste. ESTA é a variante coberta pela garantia.
+
+    delta continua 0.05 por padrão para não alterar silenciosamente números já
+    reportados; passe delta=0.001 para a versão mais conservadora.
     """
     from methods.sgr.sgr import SGRController
-    sgr = SGRController(delta=0.05) # delta era  = 0.001 (99.9% de certeza)
-    
+    sgr = SGRController(delta=delta)
+
     results = {}
+    suffix = "" if calib is None else "_heldout"
     for r_star in target_risks:
-        theta, bound, coverage = sgr.fit(confidences, preds, targets, r_star)
-        results[f"sgr_coverage_at_risk_{int(r_star*100)}"] = coverage
-        
+        if calib is None:
+            theta, bound, coverage = sgr.fit(confidences, preds, targets, r_star)
+        else:
+            conf_c, preds_c, targ_c = calib
+            theta, bound, _ = sgr.fit(conf_c, preds_c, targ_c, r_star)
+            coverage = float((confidences >= theta).mean()) if theta != float('inf') else 0.0
+        results[f"sgr_coverage_at_risk_{int(r_star*100)}{suffix}"] = coverage
+
     return results
 
 def evaluate_selective(confidences, preds, targets):

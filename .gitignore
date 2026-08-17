@@ -11,4 +11,11 @@ figures/
 .claude
 .venv
 base/
+paper/
 run_model.sh
+checkpoints/
+.github
+runs/
+submission_materials/
+site/
+.libs_setfit/

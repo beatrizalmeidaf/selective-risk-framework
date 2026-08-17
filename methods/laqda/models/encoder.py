@@ -1,4 +1,5 @@
 import copy
+import os
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoConfig, AutoModel
@@ -110,7 +111,14 @@ class LabelAwareEncoder(nn.Module):
         dropped_output = self.drop(linear_output)
         
         attention_output = self.attention(dropped_output, extended_attention_mask)[0]
-        residual_output = 0.1 * attention_output + 0.9 * connect_embeddings
+        # Peso da mistura residual. O padrao 0.1/0.9 e' herdado da referencia e
+        # nunca foi variado; com 0.9 sobre o CLS nao adaptado o adaptador de
+        # rotulos contribui pouco por construcao, o que pode explicar
+        # mecanicamente o resultado da ablacao. LAQDA_RESIDUAL_ALPHA permite
+        # varrer o peso sem tocar no restante do pipeline; ausente, o
+        # comportamento e' identico ao publicado.
+        a = float(os.environ.get("LAQDA_RESIDUAL_ALPHA", 0.1))
+        residual_output = a * attention_output + (1.0 - a) * connect_embeddings
         
         final_emb = residual_output[:, 0, :]
         

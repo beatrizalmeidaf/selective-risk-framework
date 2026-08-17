@@ -120,6 +120,11 @@ def main():
         )
         
     # Load global model config
+    # LAQDA_ENCODER permite trocar o encoder base sem editar o YAML global,
+    # que e' compartilhado por todas as execucoes. Ausente, o comportamento e'
+    # identico ao publicado (BERTimbau para pt).
+    _enc_override = os.environ.get('LAQDA_ENCODER')
+    lang = None  # pode nao ser definido se o YAML global nao existir
     global_config_path = 'configs/model_encoder_config.yaml'
     if os.path.exists(global_config_path):
         global_config = load_config(global_config_path)
@@ -127,6 +132,18 @@ def main():
         global_model_name = global_config.get('model', {}).get(f'encoder_name_{lang}', 'bert-base-uncased')
     else:
         global_model_name = 'bert-base-uncased'
+    # Override so' se a variavel existir; caso contrario o valor do YAML e'
+    # preservado. (Uma versao anterior colocava este if ANTES do else, fazendo o
+    # else se ligar a ele e forcar bert-base-uncased em toda execucao sem a
+    # variavel -- o que treinou modelos com o encoder errado.)
+    if _enc_override:
+        global_model_name = _enc_override
+
+    # Registrar o encoder no log: sem isto, treinar o encoder errado (p.ex. um
+    # corpus em ingles com active_language: "pt") nao deixa nenhum rastro, roda
+    # sem erro e so' aparece muito depois na contagem de parametros.
+    print(f"Encoder: {global_model_name} "
+          f"(origem: {'LAQDA_ENCODER' if _enc_override else f'YAML/{lang}'})", flush=True)
 
     model_cfg = config.get('model', {})
     

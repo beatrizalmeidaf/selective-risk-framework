@@ -50,6 +50,21 @@ for CATEGORY in "$BASE_DATASET_DIR"/*; do
 . /home/user_beatrizalmeida/selective-risk-framework/.venv/bin/activate
 cd /home/user_beatrizalmeida/selective-risk-framework
 
+# configs/model_encoder_config.yaml traz active_language: "pt", que e' GLOBAL e
+# nao deriva do dataset: sem esta linha, todo corpus em ingles seria treinado com
+# BERTimbau (vocabulario WordPiece cased de portugues) sobre texto ingles, o que
+# roda sem erro e produz numeros silenciosamente errados. Fixar por job evita
+# editar o YAML compartilhado -- e evita que uma execucao pt concorrente pegue o
+# encoder errado.
+export LAQDA_ENCODER=google-bert/bert-base-uncased
+
+# StackOverflow (327 classes) k=10 estourou a VRAM em 3 de 5 folds pedindo ~4 GiB
+# com <1 GiB livre de 79 GiB, enquanto os folds 01 e 03 passaram na MESMA
+# configuracao -- ou seja, fragmentacao, nao demanda real. expandable_segments
+# altera so' o alocador de cache do CUDA; nao muda nenhuma computacao, entao os
+# folds ja' concluidos permanecem comparaveis com os refeitos.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 SAVE_DIR="outputs/final_eval_fixed/${LANG_DIR}/laqda/${CORPUS}/fold_${FOLD}"
 mkdir -p "\${SAVE_DIR}"
 

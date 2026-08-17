@@ -31,6 +31,8 @@ def get_parser():
     parser.add_argument('--patience', type=int, default=30, help='Patience para Early Stopping')
     parser.add_argument('--num_freeze', type=int, default=6, help='Número de camadas do encoder para congelar')
     parser.add_argument('--weight_decay', type=float, default=1e-2, help='Weight decay para o otimizador AdamW')
+    parser.add_argument('--encoder_lr', type=float, default=1e-5, help='LR do encoder (default = valor usado nos resultados publicados)')
+    parser.add_argument('--head_lr', type=float, default=1e-3, help='LR da cabeca de classificacao (idem)')
     parser.add_argument('--dropout', type=float, default=0.1, help='Taxa de dropout na camada de classificação')
     return parser
 
@@ -46,6 +48,13 @@ def main():
     print(f"Device: {device_str}")
     
     # 1. Carregar configuração global de arquitetura
+    # active_language e' um interruptor GLOBAL do YAML: ele nao e' derivado do
+    # dataset. Rodar um corpus em ingles com o YAML em "pt" treina BERTimbau
+    # sobre texto ingles silenciosamente. LAQDA_ENCODER (mesmo nome usado em
+    # laqda/cli/train.py e laqda/inference/infer.py) permite fixar o encoder por
+    # job, sem editar o YAML compartilhado. Ausente, o valor do YAML e'
+    # preservado e o comportamento e' identico ao publicado.
+    _enc_override = os.environ.get('LAQDA_ENCODER')
     global_config_path = 'configs/model_encoder_config.yaml'
     if os.path.exists(global_config_path):
         global_config = load_config(global_config_path)
@@ -53,7 +62,9 @@ def main():
         global_model_name = global_config.get('model', {}).get(f'encoder_name_{lang}', 'bert-base-uncased')
     else:
         global_model_name = 'bert-base-uncased'
-        
+    if _enc_override:
+        global_model_name = _enc_override
+
     print(f"Instanciando Baseline com Encoder Universal: {global_model_name}")
 
     # Extrair kshot do config caso não venha do argumento
@@ -78,9 +89,14 @@ def main():
     model = BaselineClassifier(global_model_name, num_classes, num_freeze=args.num_freeze, dropout=args.dropout, kshot=args.kshot)
     model.to(device_str)
     
+    # NOTA: ate' aqui o argumento --lr era parseado e IGNORADO -- estas duas
+    # taxas eram fixas no codigo. Os defaults abaixo reproduzem exatamente o
+    # comportamento que gerou os resultados publicados; --encoder_lr/--head_lr
+    # existem para permitir a varredura de baseline pedida na revisao, sem a
+    # qual nao da' para afirmar que a baseline CE esta' bem configurada.
     optimizer_grouped_parameters = [
-        {'params': model.encoder.parameters(), 'lr': 1e-5},
-        {'params': model.classifier.parameters(), 'lr': 1e-3}
+        {'params': model.encoder.parameters(), 'lr': args.encoder_lr},
+        {'params': model.classifier.parameters(), 'lr': args.head_lr}
     ]
     optimizer = AdamW(optimizer_grouped_parameters, weight_decay=args.weight_decay)
     
@@ -157,8 +173,16 @@ def main():
                 torch.save(torch.cat(all_features), os.path.join(args.save_dir, 'val_features.pt'))
                 torch.save(torch.cat(all_logits), os.path.join(args.save_dir, 'val_logits.pt'))
                 torch.save(torch.cat(all_labels), os.path.join(args.save_dir, 'val_labels.pt'))
+            else:
+                # BUG corrigido: este incremento estava DENTRO do ramo de
+                # melhoria, entao o contador nunca passava de 1 e o early
+                # stopping jamais disparava -- a baseline treinava sempre as 100
+                # epocas. Nao afetava a selecao de modelo (o melhor checkpoint
+                # por val loss e' recarregado antes do teste, linha ~200), so'
+                # desperdicava compute; por isso os numeros publicados seguem
+                # validos.
                 epochs_no_improve += 1
-                
+
             current_lr = optimizer.param_groups[0]['lr']
             print(f"Current LR: {current_lr:.2e}")
 
