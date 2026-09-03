@@ -19,3 +19,4 @@ runs/
 submission_materials/
 site/
 .libs_setfit/
+scripts/slurm/
