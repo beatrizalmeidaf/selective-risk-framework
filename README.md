@@ -6,7 +6,7 @@ Esse repositório contém a implementação do framework de avaliação e mitiga
 
 ## Página do Projeto (GitHub Pages)
 
-A página pública do projeto — resumo, pipeline, gráficos interativos e todas as tabelas de resultados do artigo — fica em [`site/`](site/), em duas versões independentes e completas: [`index.html`](site/index.html) inteiramente em inglês e [`pt.html`](site/pt.html) inteiramente em português, alternáveis pelo seletor EN/PT na barra de navegação.
+A página pública do projeto — resumo, pipeline, gráficos interativos e todas as tabelas de resultados do artigo — fica em [`site/`](site/), em duas versões independentes e completas: [`index.html`](site/index.html) inteiramente em português (idioma padrão do site) e [`en.html`](site/en.html) inteiramente em inglês, alternáveis pelo seletor PT/EN na barra de navegação. O arquivo `pt.html` é mantido apenas como redirecionamento para `index.html`, para não quebrar links antigos.
 
 *   **Pré-visualizar localmente**:
     ```bash
@@ -17,7 +17,7 @@ A página pública do projeto — resumo, pipeline, gráficos interativos e toda
 
 Cada página é autocontida (sem imagens externas). Das 18 tabelas, **17 têm gráfico** e alternam entre **Gráfico** e **Tabela** pelo botão no cabeçalho do painel; cada gráfico traz uma etiqueta de direção (↓ menor é melhor / ↑ maior é melhor). A Tabela 16 é a única sem gráfico, por listar configurações e não números comparáveis. Formas usadas: barras horizontais agrupadas (até 4 séries, com hastes de desvio na ablação), mapa de calor (grade de 7 baselines), pequenos múltiplos (grade 4×2 e AURC vs. K) e barras em escala logarítmica com linhas de referência (tamanho `m`).
 
-Os números são transcritos de `docs/conferences/ACL/acl_latex.tex`. Ao atualizar o artigo, atualize os blocos de dados no `<script>` **das duas páginas** (a versão PT usa vírgula decimal via `nf()`): `AURC`, `GRID`, `COV`, `CERT`, `FRW`, `EN_ORDER`, `ENCERT`, `ALT`, `KSHOT`, `LADDER` e `MROWS` — cada um corresponde a uma tabela do paper.
+Os números são transcritos de [`docs/conferences/ACL/paper.tex`](docs/conferences/ACL/paper.tex). Ao atualizar o artigo, atualize os blocos de dados no `<script>` **das duas páginas** (`index.html` e `en.html`; a versão PT usa vírgula decimal via `nf()`): `AURC`, `GRID`, `COV`, `CERT`, `FRW`, `EN_ORDER`, `ENCERT`, `ALT`, `KSHOT`, `LADDER` e `MROWS` — cada um corresponde a uma tabela do paper.
 
 ---
 
