@@ -1,0 +1,2641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selective Classification in Few-Shot Text</title>
+<meta name="description" content="A measurement and attribution study: where the risk-coverage gain comes from under few-shot supervision. Twelve Portuguese corpora, eight English, a 4x2 representation-by-score grid.">
+<meta property="og:title" content="Selective Classification in Few-Shot Text">
+<meta property="og:description" content="The confidence function is not the mechanism; the learned geometry is.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◔</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Tokens
+   ============================================================ */
+:root{
+  color-scheme: light;
+  --surface-0:#ffffff;
+  --surface-1:#fcfcfc;
+  --surface-2:#f4f5f7;
+  --surface-3:#e9ebf0;
+  --rule:#e2e5ea;
+  --rule-strong:#c7ccd4;
+  --ink:#111827;
+  --ink-2:#4b5563;
+  --ink-3:#6b7280;
+  --accent:#2563eb;
+  --accent-soft:#eff6ff;
+  --series-1:#3b82f6;
+  --series-2:#f97316;
+  --series-3:#10b981;
+  --series-4:#8b5cf6;
+  --good:#059669;
+  --shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 15px -3px rgba(0,0,0,0.1);
+  --shadow-hover:0 10px 25px -5px rgba(37,99,235,0.15), 0 8px 10px -6px rgba(37,99,235,0.1);
+  --serif:"Outfit", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --maxw:1080px;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --surface-0:#0f1115; --surface-1:#16191f; --surface-2:#1e2229; --surface-3:#272c35;
+    --rule:#2c313a; --rule-strong:#3f4652;
+    --ink:#f9fafb; --ink-2:#d1d5db; --ink-3:#9ca3af;
+    --accent:#3b82f6; --accent-soft:#1e3a8a;
+    --series-1:#60a5fa; --series-2:#fb923c; --series-3:#34d399; --series-4:#a78bfa;
+    --good:#10b981;
+    --shadow:0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -2px rgba(0,0,0,0.2);
+    --shadow-hover:0 10px 25px -5px rgba(59,130,246,0.25), 0 8px 10px -6px rgba(59,130,246,0.2);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --surface-0:#0f1115; --surface-1:#16191f; --surface-2:#1e2229; --surface-3:#272c35;
+  --rule:#2c313a; --rule-strong:#3f4652;
+  --ink:#f9fafb; --ink-2:#d1d5db; --ink-3:#9ca3af;
+  --accent:#3b82f6; --accent-soft:#1e3a8a;
+  --series-1:#60a5fa; --series-2:#fb923c; --series-3:#34d399; --series-4:#a78bfa;
+  --good:#10b981;
+  --shadow:0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -2px rgba(0,0,0,0.2);
+  --shadow-hover:0 10px 25px -5px rgba(59,130,246,0.25), 0 8px 10px -6px rgba(59,130,246,0.2);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%; scroll-behavior:smooth; scroll-padding-top:5rem}
+body{margin:0; background:var(--surface-0); color:var(--ink);
+  font-family:var(--sans); font-size:16.5px; line-height:1.65;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden}
+img{max-width:100%; height:auto; display:block}
+a{color:var(--accent); text-underline-offset:2px; text-decoration-thickness:.06em}
+h1,h2,h3,h4{font-family:var(--serif); font-weight:600; line-height:1.2; letter-spacing:-.01em; margin:0}
+code,kbd{font-family:var(--mono); font-size:.87em}
+.wrap{max-width:var(--maxw); margin-inline:auto; padding-inline:clamp(1rem,4vw,2.5rem)}
+.narrow{max-width:760px}
+
+/* Nav */
+.nav{position:sticky; top:0; z-index:50; background:var(--surface-0);
+  background:color-mix(in srgb, var(--surface-0) 75%, transparent);
+  backdrop-filter:saturate(180%) blur(16px); border-bottom:1px solid color-mix(in srgb, var(--rule) 50%, transparent)}
+.nav-in{display:flex; align-items:center; gap:1rem; height:3.4rem}
+.nav-mark{font-family:var(--serif); font-weight:600; font-size:.98rem; white-space:nowrap; letter-spacing:-.01em}
+.nav-mark span{color:var(--ink-3); font-weight:400}
+.nav-links{display:flex; gap:.15rem; margin-left:auto; overflow-x:auto; scrollbar-width:none}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links a{color:var(--ink-2); text-decoration:none; font-size:.83rem; padding:.35rem .55rem;
+  border-radius:6px; white-space:nowrap}
+.nav-links a:hover{background:var(--surface-2); color:var(--ink)}
+.nav-links a.on{color:var(--ink); background:var(--surface-2)}
+.tbtn{flex:none; width:2rem; height:2rem; display:grid; place-items:center; border:1px solid var(--rule);
+  border-radius:7px; background:var(--surface-1); color:var(--ink-2); cursor:pointer; transition:all .2s ease}
+.tbtn:hover{color:var(--ink); border-color:var(--rule-strong); transform:scale(1.05)}
+
+.lang-switch{display:inline-flex; align-items:center; background:var(--surface-2); border-radius:8px; padding:2px; margin-left:.5rem; border:1px solid var(--rule)}
+.lang-switch a{font-size:.75rem; font-weight:600; color:var(--ink-2); padding:.25rem .5rem; border-radius:6px; text-decoration:none; transition:all .2s ease}
+.lang-switch a:hover{color:var(--ink)}
+.lang-switch a.on{background:var(--surface-0); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+@media (max-width:700px){ .nav-mark{display:none} .nav-links{margin-left:0} }
+
+/* Hero */
+.hero{padding:clamp(3rem,7vw,5.5rem) 0 2.5rem; border-bottom:1px solid var(--rule); position:relative; overflow:hidden}
+.hero::before{content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(circle at 15% 50%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 45%),
+             radial-gradient(circle at 85% 30%, color-mix(in srgb, var(--good) 8%, transparent), transparent 45%);}
+.venue{display:inline-flex; align-items:center; gap:.5rem; font-size:.74rem; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-3); font-weight:600; margin-bottom:1.1rem}
+.venue::before{content:""; width:1.6rem; height:1px; background:var(--rule-strong)}
+h1.title{font-size:clamp(1.9rem,4.6vw,3rem); letter-spacing:-.022em; text-wrap:balance}
+h1.title em{font-style:normal; display:block; color:var(--ink-2); font-size:.62em; margin-top:.45rem}
+.byline{margin:1.4rem 0 0; color:var(--ink-2); font-size:.95rem}
+.byline .anon{display:inline-block; font-size:.72rem; letter-spacing:.05em; text-transform:uppercase;
+  border:1px solid var(--rule); border-radius:999px; padding:.12rem .5rem; color:var(--ink-3); margin-left:.35rem}
+.links{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.6rem}
+.btn{display:inline-flex; align-items:center; gap:.45rem; font-size:.86rem; font-weight:500;
+  padding:.55rem 1rem; border-radius:8px; text-decoration:none; border:1px solid var(--rule-strong);
+  color:var(--ink); background:var(--surface-1); transition:all .2s ease; box-shadow:0 2px 4px -2px rgba(0,0,0,0.05)}
+.btn:hover{background:var(--surface-2); transform:translateY(-1px); box-shadow:var(--shadow-hover)}
+.btn.primary{background:var(--accent); color:var(--surface-0); border-color:var(--accent)}
+.btn.primary:hover{opacity:1; background:color-mix(in srgb, var(--accent) 85%, black); transform:translateY(-2px)}
+.btn svg{width:15px; height:15px; flex:none}
+.stats{display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--rule);
+  border:1px solid var(--rule); border-radius:12px; overflow:hidden; margin-top:2.6rem}
+.stat{background:var(--surface-1); padding:1.05rem 1.15rem}
+.stat b{display:block; font-family:var(--serif); font-size:clamp(1.4rem,3.2vw,1.9rem); font-weight:600;
+  letter-spacing:-.02em; line-height:1.1}
+.stat span{display:block; font-size:.775rem; color:var(--ink-2); margin-top:.3rem; line-height:1.35}
+.stat em{font-style:italic}
+@media (max-width:980px){ .stats{grid-template-columns:repeat(3,1fr)} }
+@media (max-width:640px){ .stats{grid-template-columns:repeat(2,1fr)} }
+
+/* Sections */
+section{padding:clamp(3rem,6vw,4.5rem) 0; border-bottom:1px solid var(--rule)}
+.kicker{font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; font-weight:700;
+  color:var(--accent); margin-bottom:.7rem}
+h2{font-size:clamp(1.5rem,3.2vw,2.05rem); letter-spacing:-.02em}
+h3{font-size:1.12rem; margin-top:2.4rem; margin-bottom:.5rem}
+h4{font-size:.95rem; font-family:var(--sans); font-weight:650}
+.lede{font-size:1.06rem; color:var(--ink-2); max-width:68ch; margin-top:.9rem}
+p{margin:1rem 0; max-width:72ch}
+.sec-head{margin-bottom:2rem}
+
+.abstract{background:var(--surface-1); border:1px solid var(--rule); border-radius:14px;
+  padding:clamp(1.3rem,3vw,2rem); box-shadow:var(--shadow)}
+.abstract p{font-family:var(--serif); font-size:1.02rem; line-height:1.72; max-width:none; color:var(--ink)}
+.abstract p:first-of-type{margin-top:0}
+.abstract p:last-child{margin-bottom:0}
+.abstract .lbl{font-family:var(--sans); font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:700; display:block; margin-bottom:.8rem}
+mark{background:var(--accent-soft); color:inherit; padding:.05em .2em; border-radius:3px}
+
+.figure{margin:2rem 0 0}
+.plate{border:1px solid var(--rule); border-radius:14px; background:var(--surface-1); padding:1.25rem; overflow-x:auto}
+figcaption{font-size:.85rem; color:var(--ink-2); margin-top:.85rem; line-height:1.55; max-width:78ch}
+figcaption b{color:var(--ink); font-weight:650}
+
+svg.pipe{display:block; min-width:900px; width:100%; height:auto}
+.pipe .box{fill:var(--surface-2); stroke:var(--rule-strong)}
+.pipe .box-a{fill:var(--accent-soft); stroke:var(--accent)}
+.pipe .lab{fill:var(--ink); font:600 13px var(--sans)}
+.pipe .sub{fill:var(--ink-3); font:400 11px var(--sans)}
+.pipe .edge{stroke:var(--rule-strong); stroke-width:1.5; fill:none}
+.pipe .edge-lab{fill:var(--ink-3); font:400 10.5px var(--sans)}
+.pipe .dash{stroke:var(--rule-strong); stroke-dasharray:4 4; fill:none}
+.pipe .grp{fill:var(--ink-3); font:600 10px var(--sans); letter-spacing:.08em}
+.pipe .ok{fill:color-mix(in srgb,var(--good) 12%,var(--surface-1)); stroke:var(--good)}
+.pipe .no{fill:color-mix(in srgb,var(--series-2) 12%,var(--surface-1)); stroke:var(--series-2)}
+.pipe .ok-t{fill:var(--good); font:600 12px var(--sans)}
+.pipe .no-t{fill:var(--series-2); font:600 12px var(--sans)}
+
+.cards{display:grid; grid-template-columns:repeat(3,1fr); gap:1.2rem; margin-top:2.5rem}
+@media (max-width:860px){ .cards{grid-template-columns:1fr} }
+.card{border:1px solid var(--rule); border-radius:14px; background:var(--surface-0); padding:1.4rem 1.4rem; box-shadow:0 2px 8px -2px rgba(0,0,0,0.05); transition:transform .2s ease, box-shadow .2s ease;}
+.card:hover{transform:translateY(-4px); box-shadow:var(--shadow-hover); border-color:var(--accent);}
+.card .n{font:600 .72rem var(--sans); letter-spacing:.1em; color:var(--ink-3)}
+.card h4{margin:.4rem 0 .5rem}
+.card p{font-size:.9rem; color:var(--ink-2); margin:0; max-width:none}
+
+/* Why list */
+.whys{display:grid; gap:0; margin-top:2rem; border-top:1px solid var(--rule)}
+.why{display:grid; grid-template-columns:5.5rem 1fr; gap:1.5rem; padding:1.7rem 0; border-bottom:1px solid var(--rule)}
+.why .wn{font-family:var(--serif); font-size:2.1rem; font-weight:600; line-height:1;
+  color:var(--rule-strong); letter-spacing:-.03em; text-align:right}
+.why h3{margin:0 0 .35rem; font-size:1.16rem}
+.why p{margin:0; color:var(--ink-2); font-size:.94rem; max-width:70ch}
+.why b{color:var(--ink)}
+@media (max-width:640px){ .why{grid-template-columns:1fr; gap:.35rem; padding:1.4rem 0}
+  .why .wn{text-align:left; font-size:1.4rem} }
+.pull{margin-top:2.4rem; padding:1.5rem 1.7rem; border-radius:14px; background:var(--surface-2); border:1px solid var(--rule)}
+.pull p{font-family:var(--serif); font-size:1.14rem; line-height:1.6; margin:0; max-width:none}
+.pull p.src{font-family:var(--sans); font-size:.82rem; color:var(--ink-3); margin-top:.9rem; line-height:1.55}
+
+/* 2x2 matrix */
+.mtx{display:grid; grid-template-columns:auto 1fr 1fr; gap:.4rem; max-width:520px; margin:1.4rem 0 0; font-size:.85rem}
+.mtx .h{font:600 .74rem/1.3 var(--sans); color:var(--ink-2); text-align:center; align-self:end; padding-bottom:.2rem}
+.mtx .rh{font:600 .74rem/1.3 var(--sans); color:var(--ink-2); align-self:center; text-align:right; padding-right:.3rem}
+.mtx .c{border:1px solid var(--rule); border-radius:9px; background:var(--surface-2); padding:.7rem .5rem;
+  text-align:center; font-variant-numeric:tabular-nums; font-family:var(--serif); font-size:1.35rem; font-weight:600}
+.mtx .c.best{background:var(--accent-soft); border-color:var(--accent); color:var(--ink)}
+.mtx .c small{display:block; font:400 .66rem/1.2 var(--sans); color:var(--ink-3); margin-top:.25rem}
+.deltas{display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1rem}
+.delta{font-size:.82rem; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--rule);
+  border-radius:8px; padding:.4rem .7rem}
+.delta b{color:var(--ink); font-variant-numeric:tabular-nums}
+
+/* Equations */
+.eq{font-family:var(--serif); font-size:1.02rem; text-align:center; margin:1.3rem 0; padding:.9rem 1rem;
+  background:var(--surface-2); border-radius:10px; border:1px solid var(--rule); overflow-x:auto; white-space:nowrap}
+.eq i{font-style:italic}
+.eq .tag{float:right; color:var(--ink-3); font-family:var(--sans); font-size:.78rem; font-style:normal}
+var{font-family:var(--serif); font-style:italic}
+
+/* Charts */
+.panel{border:1px solid var(--rule); border-radius:14px; background:var(--surface-1); box-shadow:var(--shadow); margin-top:1.8rem}
+.panel-head{display:flex; flex-wrap:wrap; align-items:flex-end; gap:1rem; padding:1.15rem 1.25rem .9rem; border-bottom:1px solid var(--rule)}
+.panel-head h4{font-size:1rem; margin:0}
+.panel-head .sub{font-size:.82rem; color:var(--ink-2); margin-top:.15rem; max-width:60ch}
+.controls{margin-left:auto; display:flex; gap:.9rem; align-items:center; flex-wrap:wrap}
+.seg{display:inline-flex; background:var(--surface-3); border-radius:8px; padding:2px; gap:2px}
+.seg button{font:500 .8rem/1 var(--sans); color:var(--ink-2); background:none; border:0; cursor:pointer;
+  padding:.45rem .65rem; border-radius:6px; transition:all .2s ease}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--surface-0); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); transform:scale(1.02)}
+.seg-lbl{font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:600; margin-right:-.55rem}
+.legend{display:flex; gap:1rem; align-items:center; padding:.85rem 1.25rem 0; font-size:.82rem; color:var(--ink-2); flex-wrap:wrap}
+.legend i{width:12px; height:12px; border-radius:3px; display:inline-block; margin-right:.4rem; vertical-align:-1px}
+.panel-body{padding:.6rem 1.25rem 1.25rem; position:relative}
+
+.chart{display:grid; grid-template-columns:minmax(64px,116px) 1fr; gap:0 .85rem; font-size:.82rem}
+.grp-lbl{grid-column:1/-1; font-size:.68rem; letter-spacing:.09em; text-transform:uppercase; font-weight:700;
+  color:var(--ink-3); padding:.85rem 0 .35rem; border-bottom:1px solid var(--rule); margin-bottom:.45rem}
+.grp-lbl:first-child{padding-top:.2rem}
+.row-lab{align-self:center; text-align:right; color:var(--ink-2); padding:.28rem 0; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; font-size:.8rem}
+.row-plot{position:relative; padding:.3rem 0; border-left:1px solid var(--rule)}
+.row:hover .row-lab, .row-lab.act{color:var(--ink); font-weight:600}
+.bar-line{display:flex; align-items:center; gap:.45rem; height:13px}
+.bar-line + .bar-line{margin-top:2px}
+.bar{height:11px; border-radius:0 4px 4px 0; min-width:2px; transition:width .35s cubic-bezier(.4,0,.2,1)}
+.bar.s1{background:var(--series-1)}
+.bar.s2{background:var(--series-2)}
+.tip-val{font-variant-numeric:tabular-nums; font-size:.75rem; color:var(--ink); font-weight:600; white-space:nowrap}
+.axis{grid-column:2; position:relative; height:1.6rem; border-top:1px solid var(--rule); margin-top:.4rem}
+.axis span{position:absolute; top:.3rem; transform:translateX(-50%); font-size:.72rem; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.axis span:first-child{transform:none}
+.axis-title{grid-column:2; font-size:.75rem; color:var(--ink-3); margin-top:-.2rem}
+.gridlines{position:absolute; inset:0; pointer-events:none}
+.gridlines i{position:absolute; top:0; bottom:0; width:1px; background:var(--rule); opacity:.7}
+.annot{font-size:.72rem; color:var(--ink-2); background:var(--surface-3); border-radius:5px;
+  padding:.05rem .35rem; margin-left:.15rem; white-space:nowrap}
+
+.tip{position:absolute; z-index:20; pointer-events:none; opacity:0; transition:opacity .12s;
+  background:var(--surface-0); border:1px solid var(--rule-strong); border-radius:9px; box-shadow:var(--shadow);
+  padding:.6rem .7rem; font-size:.78rem; min-width:180px}
+.tip.on{opacity:1}
+.tip b{display:block; font-family:var(--sans); font-weight:650; font-size:.82rem; margin-bottom:.4rem}
+.tip .r{display:flex; justify-content:space-between; gap:1.2rem; color:var(--ink-2); padding:.1rem 0}
+.tip .r i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:.35rem}
+.tip .r .v{font-variant-numeric:tabular-nums; color:var(--ink); font-weight:600}
+.tip hr{border:0; border-top:1px solid var(--rule); margin:.4rem 0}
+
+/* small multiples */
+.sm{display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-top:.4rem}
+@media (max-width:760px){ .sm{grid-template-columns:1fr} }
+.sm figure{margin:0}
+.sm .t{font:600 .82rem var(--sans); color:var(--ink); text-align:center; margin-bottom:.2rem}
+.sm svg{width:100%; height:auto; display:block}
+.sm .grid{stroke:var(--rule); stroke-width:1}
+.sm .ax{stroke:var(--rule-strong); stroke-width:1}
+.sm .tick{fill:var(--ink-3); font:400 9px var(--sans)}
+.sm .ln{fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+.sm .eb{stroke-width:1.5; stroke-linecap:round}
+.sm .mk{stroke:var(--surface-1); stroke-width:2}
+
+/* ---- charts: 4th series, direction badges, heatmap, facets ---- */
+.bar.s3{background:var(--series-3)}
+.bar.s4{background:var(--series-4)}
+.better{display:inline-flex; align-items:center; gap:.2rem; font:600 .68rem var(--sans); letter-spacing:.02em;
+  padding:.1rem .45rem; border-radius:999px; border:1px solid var(--rule); background:var(--surface-2);
+  color:var(--ink-2); white-space:nowrap}
+.better.up{color:var(--good); border-color:color-mix(in srgb,var(--good) 35%,var(--rule))}
+.better.down{color:var(--accent); border-color:color-mix(in srgb,var(--accent) 35%,var(--rule))}
+.bar-line{position:relative}
+.whisk{position:absolute; height:1px; background:var(--ink-3); opacity:.8; top:50%}
+.whisk::before,.whisk::after{content:""; position:absolute; top:-3px; width:1px; height:7px; background:var(--ink-3)}
+.whisk::before{left:0} .whisk::after{right:0}
+
+.heat{display:grid; gap:2px; font-size:.72rem; min-width:600px}
+.heat .hh{font:600 .68rem/1.2 var(--sans); color:var(--ink-2); text-align:center; padding:.1rem 0 .3rem; align-self:end}
+.heat .rh{font-size:.76rem; color:var(--ink-2); text-align:right; padding-right:.5rem; align-self:center; white-space:nowrap}
+.heat .c{border-radius:4px; padding:.34rem .2rem; text-align:center; font-variant-numeric:tabular-nums; font-weight:500}
+.heat .c.na{background:var(--surface-2); color:var(--ink-3); font-weight:400}
+.heat-scale{display:flex; align-items:center; gap:.35rem; font-size:.72rem; color:var(--ink-3); margin-top:.9rem; flex-wrap:wrap}
+.heat-scale i{width:24px; height:10px; border-radius:2px; display:inline-block}
+.h0{background:#dbeafe; color:#111827} .h1{background:#bfdbfe; color:#111827} .h2{background:#93c5fd; color:#111827}
+.h3{background:#60a5fa; color:#111827} .h4{background:#3b82f6; color:#fff} .h5{background:#2563eb; color:#fff}
+.h6{background:#1d4ed8; color:#fff}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])) .h0{background:#172554; color:#9ca3af}
+  :root:where(:not([data-theme="light"])) .h1{background:#1e3a8a; color:#dbeafe}
+  :root:where(:not([data-theme="light"])) .h2{background:#1e40af; color:#fff}
+  :root:where(:not([data-theme="light"])) .h3{background:#1d4ed8; color:#fff}
+  :root:where(:not([data-theme="light"])) .h4{background:#2563eb; color:#fff}
+  :root:where(:not([data-theme="light"])) .h5{background:#60a5fa; color:#111827}
+  :root:where(:not([data-theme="light"])) .h6{background:#93c5fd; color:#111827}
+}
+:root[data-theme="dark"] .h0{background:#172554; color:#9ca3af}
+:root[data-theme="dark"] .h1{background:#1e3a8a; color:#dbeafe}
+:root[data-theme="dark"] .h2{background:#1e40af; color:#fff}
+:root[data-theme="dark"] .h3{background:#1d4ed8; color:#fff}
+:root[data-theme="dark"] .h4{background:#2563eb; color:#fff}
+:root[data-theme="dark"] .h5{background:#60a5fa; color:#111827}
+:root[data-theme="dark"] .h6{background:#93c5fd; color:#111827}
+
+.facets{display:grid; grid-template-columns:repeat(2,1fr); gap:1.5rem 2rem}
+@media (max-width:760px){ .facets{grid-template-columns:1fr} }
+.facet .ft{font:600 .84rem var(--sans); color:var(--ink); margin-bottom:.4rem}
+.refline{position:absolute; top:0; bottom:0; width:1px; background:var(--series-2); opacity:.5}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto; margin-top:1.4rem; border-radius:10px}
+table{border-collapse:collapse; width:100%; font-size:.85rem; font-variant-numeric:tabular-nums; min-width:520px}
+caption{text-align:left; font-size:.85rem; color:var(--ink-2); padding-bottom:.7rem; line-height:1.5}
+caption b{color:var(--ink)}
+thead th{font:600 .74rem/1.3 var(--sans); letter-spacing:.03em; color:var(--ink-2); text-align:right;
+  padding:.5rem .6rem; border-bottom:1px solid var(--rule-strong); white-space:nowrap}
+thead tr:first-child th{border-bottom:0; padding-bottom:.15rem}
+thead tr:first-child th.rule{border-bottom:1px solid var(--rule); padding-bottom:.2rem}
+thead th:first-child, tbody td:first-child{text-align:left}
+tbody td{padding:.45rem .65rem; text-align:right; border-bottom:1px solid var(--rule); color:var(--ink-2); transition:background-color .2s ease}
+tbody tr:last-child td{border-bottom:1px solid var(--rule-strong)}
+tbody td:first-child{color:var(--ink); font-weight:500; text-align:left}
+tbody td.win{color:var(--ink); font-weight:700}
+tbody td.zero{color:var(--ink-3)}
+tbody tr:hover td{background:var(--surface-2); color:var(--ink)}
+tbody tr.sep td{border-top:1px solid var(--rule-strong)}
+tbody tr.mean td{font-weight:650; color:var(--ink); border-top:1px solid var(--rule-strong)}
+tbody tr.sub td{background:var(--surface-2); font:600 .74rem var(--sans); letter-spacing:.05em;
+  text-transform:uppercase; color:var(--ink-3); text-align:left}
+td .pm{color:var(--ink-3); font-size:.85em}
+.foot-note{font-size:.8rem; color:var(--ink-3); margin-top:.7rem; line-height:1.55; max-width:78ch}
+.hide{display:none !important}
+
+.note{border:1px solid var(--rule); border-left:3px solid var(--accent); background:var(--surface-1);
+  border-radius:0 12px 12px 0; padding:1.1rem 1.3rem; margin-top:1.8rem}
+.note h4{margin-bottom:.4rem}
+.note p{font-size:.9rem; color:var(--ink-2); margin:.5rem 0 0}
+.note p:first-of-type{margin-top:.2rem}
+.note.warn{border-left-color:var(--series-2)}
+
+pre{background:var(--surface-2); border:1px solid var(--rule); border-radius:10px; padding:.9rem 1rem;
+  overflow-x:auto; font-family:var(--mono); font-size:.8rem; line-height:1.6; color:var(--ink); margin:.8rem 0}
+pre .c{color:var(--ink-3)}
+.copy{position:absolute; top:.6rem; right:.6rem; font:500 .72rem var(--sans); cursor:pointer;
+  background:var(--surface-0); border:1px solid var(--rule-strong); color:var(--ink-2); border-radius:6px; padding:.25rem .5rem}
+.copy:hover{color:var(--ink)}
+.rel{position:relative}
+.steps{display:grid; gap:1.6rem; margin-top:1.6rem}
+.step{display:grid; grid-template-columns:2rem 1fr; gap:1rem; align-items:start}
+.step .num{width:2rem; height:2rem; border-radius:50%; display:grid; place-items:center; background:var(--surface-2);
+  border:1px solid var(--rule); font:600 .82rem var(--sans); color:var(--ink-2)}
+.step h4{margin-bottom:.15rem}
+.step p{font-size:.9rem; color:var(--ink-2); margin:.2rem 0 0}
+.tree{font-family:var(--mono); font-size:.78rem; line-height:1.75; color:var(--ink-2)}
+.tree b{color:var(--ink); font-weight:600}
+footer{padding:2.5rem 0 3.5rem; color:var(--ink-3); font-size:.83rem}
+footer a{color:var(--ink-2)}
+.foot-grid{display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:space-between; align-items:baseline}
+@media print{ .nav,.controls,.tbtn{display:none} body{font-size:11pt} }
+</style>
+</head>
+<body>
+
+<!-- ============================== NAV ============================== -->
+<nav class="nav">
+  <div class="wrap nav-in">
+    <div class="nav-mark">Selective Risk Framework <span>· few-shot</span></div>
+    <div class="nav-links" id="navlinks">
+      <a href="#overview">Overview</a>
+      <a href="#why">Why it matters</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#attribution">Attribution</a>
+      <a href="#certified">Certification</a>
+      <a href="#crosslingual">English</a>
+      <a href="#analysis">Analysis</a>
+      <a href="#repro">Reproduce</a>
+      <a href="#cite">Cite</a>
+    </div>
+    <div class="lang-switch">
+      <a href="en.html" class="on">EN</a>
+      <a href="index.html">PT</a>
+    </div>
+    <button class="tbtn" id="theme" title="Toggle light / dark" aria-label="Toggle light or dark theme">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2M12 19.4v2M2.6 12h2M19.4 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ============================== HERO ============================== -->
+<header class="hero">
+  <div class="wrap">
+    <div class="venue">Long paper · under review</div>
+    <h1 class="title">Selective Classification in Few-Shot Text:
+      <em>Prototypical Geometry Dominates Confidence Scores</em>
+    </h1>
+    <!-- Camera-ready author block goes here; withheld while the submission is
+         two-way anonymised (see acl_latex.tex). -->
+    <p class="byline">Author list withheld for double-blind review <span class="anon">anonymous</span></p>
+
+    <div class="links">
+      <a class="btn primary" href="https://github.com/beatrizalmeidaf/selective-risk-framework">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.6 5.6.6 12c0 5 3.3 9.3 7.8 10.8.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.8 2.7 1.3 3.4 1 .1-.7.4-1.3.7-1.5-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.9 1.2 1.9 1.2 3.2 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.8-5.8 7.8-10.8C23.4 5.6 18.3.5 12 .5z"/></svg>
+        Code
+      </a>
+      <a class="btn" href="#results">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19V9M10 19V4M16 19v-7M22 19H2"/></svg>
+        Results
+      </a>
+      <a class="btn" href="#attribution">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+        The 4&times;2 grid
+      </a>
+      <a class="btn" href="#repro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+        Reproduce
+      </a>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>12&thinsp;/&thinsp;12</b><span>corpora where prototypical geometry beats <em>every</em> post-hoc baseline at 5-shot</span></div>
+      <div class="stat"><b>&minus;67%</b><span>median AURC reduction against the strongest baseline under an oracle sweep</span></div>
+      <div class="stat"><b>0.0036</b><span>AURC moved by changing the <em>score</em> &mdash; against up to 0.38 by changing the <em>representation</em></span></div>
+      <div class="stat"><b>0.94</b><span>certified coverage at 5% risk on court rulings, where the tuned baseline is infeasible</span></div>
+      <div class="stat"><b>15.2%</b><span>risk actually realised by that 5%-certified threshold once unseen classes enter the stream</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============================== OVERVIEW ============================== -->
+<section id="overview">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Overview</div>
+      <h2>Where does the gain actually come from?</h2>
+      <p class="lede">This is a <b>measurement and attribution study</b>, not a proposal of new model components.
+      Few-shot text classifiers abstain poorly, and the field has responded by designing better confidence scores over
+      a representation taken as given. We evaluate two scores over four representations and find the effect is carried
+      almost entirely by the representation.</p>
+    </div>
+
+    <div class="abstract narrow">
+      <span class="lbl">Abstract</span>
+      <p>Few-shot text classification models perform suboptimally at abstention: with only a few labelled examples per
+      class, confidence scores rank errors too weakly for a risk&ndash;coverage threshold to retain useful coverage.
+      Evaluating <mark>twelve Portuguese corpora</mark> under budgets of 1 to 10 examples per class, we show that
+      <em>episodic prototypical fine-tuning</em> substantially shifts this frontier, reducing AURC by a median of 67%
+      at 5-shot against seven post-hoc baselines, including the strongest under an oracle sweep. Using a disjoint
+      calibration set, the method certifies 0.94 coverage at a 5% target risk on court-ruling texts, a setting in which
+      the tuned baseline admits no feasible threshold at all.</p>
+      <p>A 4&times;2 factorial experiment over representations and confidence scores isolates where the effect
+      originates: holding the score fixed, changing the representation lowers AURC from 0.450 to 0.072 on the
+      court-ruling corpus; holding the representation fixed, by contrast, varying the score moves the metric by only
+      0.0036 on average across the twelve corpora. <mark>The results indicate that the gain comes from the learned
+      geometry, not the confidence function.</mark> This is a structural improvement in the <em>ranking</em> of errors
+      rather than merely in accuracy, since the effect holds under an accuracy-invariant AUROC and under
+      matched-accuracy control. Representation interventions are not interchangeable, however: SetFit, even when tuned
+      on the test set, performs substantially worse and degrades severely at one example per class. Moreover, a frozen
+      multilingual encoder matches the proposed method on high-resource sentiment-analysis tasks but is 6.8&times;
+      worse on legal text.</p>
+      <p>A disjoint calibration pass on all twelve corpora certifies coverage under the established theoretical
+      guarantees; the corpus-wide comparison tables, in turn, select the threshold <em>in-sample</em> and are reported
+      as attainable operating points. The causal attribution to individual components replicates on
+      <mark>eight English corpora</mark> under a strictly identical protocol, where the extreme values diverge by less
+      than 0.003 from the Portuguese figures. It is shown, however, that this certificate bounds risk only
+      <em>in-distribution</em>: on a stream containing unseen classes, the same threshold yields
+      <mark>an empirical error of 15.2% against the 5% target risk</mark>, exposing a robustness gap that is critical
+      for deployment in real systems.</p>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="n">CONTRIBUTION 01</div>
+        <h4>The broadest few-shot selective-classification evaluation in Portuguese</h4>
+        <p>Twelve corpora, five task families, three budgets, five draws each. At 5-shot, prototypical geometry achieves
+        lower AURC than every post-hoc baseline on every corpus, cutting it by a median of 67% against the strongest of
+        them under an oracle hyperparameter search.</p>
+      </div>
+      <div class="card">
+        <div class="n">CONTRIBUTION 02</div>
+        <h4>A quantitative attribution: representation vs. score</h4>
+        <p>A 4&times;2 grid showing the score contributes <b>less than 1%</b> of the representation's effect &mdash; and
+        that this dominance is a property of the few-shot regime, not of any component we introduce, since the ablation
+        finds the label adapter and QDA sampler both dispensable.</p>
+      </div>
+      <div class="card">
+        <div class="n">CONTRIBUTION 03</div>
+        <h4>Certified coverage on all twelve corpora</h4>
+        <p>With the calibration size <var>m</var> reported per corpus, and the realised risk once unseen classes enter
+        the stream &mdash; three times the target, and the number a deployment decision actually turns on.</p>
+      </div>
+      <div class="card">
+        <div class="n">CONTRIBUTION 04</div>
+        <h4>Cross-lingual replication and two controls</h4>
+        <p>The attribution replicates on eight English corpora, the ladder's extremes within 0.003. A second backbone
+        (XLM-R) preserves the advantage on nine of twelve corpora but not its magnitude, and three risk-control rules
+        are compared over our own representation.</p>
+      </div>
+      <div class="card">
+        <div class="n">SCOPE</div>
+        <h4>What we adopt rather than propose</h4>
+        <p><b>SGR</b> is an existing post-hoc framework (Geifman &amp; El-Yaniv, 2017) and <b>LAQDA</b> an existing
+        backbone whose two mechanisms we find dispensable. The operative ingredient is a plain prototypical encoder,
+        available to any practitioner already using prototypical networks.</p>
+      </div>
+      <div class="card">
+        <div class="n">PRIOR WORK</div>
+        <h4>The ordering is known in vision; the magnitude is not</h4>
+        <p>That representation quality dominates the post-hoc estimator is established for data-rich ImageNet
+        classifiers. Our contribution is its magnitude in the few-shot regime &mdash; two orders of magnitude, and a
+        sensitivity to the score that falls roughly eightfold with adaptation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== WHY ============================== -->
+<section id="why">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Why it matters</div>
+      <h2>A clarification paper, not another score</h2>
+      <p class="lede">A paper that said &ldquo;we invented a cosine score that improves AURC by 5%&rdquo; would be one
+      more entry in a crowded field. This one says: <b>we tested seven modern scores and none of them is what matters;
+      what solves selective risk under few-shot supervision is episodic prototypical geometry &mdash; and we isolated
+      the variables to show it.</b></p>
+    </div>
+
+    <div class="whys">
+      <article class="why">
+        <div class="wn">01</div>
+        <div>
+          <h3>It closes a direction the field is still pouring effort into</h3>
+          <p>Post-hoc OOD detection and selective classification have advanced largely by designing ever more elaborate
+          confidence functions &mdash; Mahalanobis, <var>k</var>NN, GradNorm, ReAct, ConjNorm &mdash; over
+          <em>a representation taken as given</em>. Our <a href="#attribution">4&times;2 attribution</a> shows that in
+          the few-shot regime this axis is close to exhausted. With the representation held fixed, switching confidence
+          function moves AURC by <b>0.0036</b> on average across twelve corpora, with no consistent winner; with the
+          score held fixed, changing the representation moves it by <b>up to 0.38</b>. Sensitivity to the score is
+          itself a function of adaptation, falling roughly eightfold from a frozen encoder to an episodically trained
+          one. The finding cuts against our own earlier framing, which is what makes it worth reporting: stop polishing
+          the ruler, and look at the latent space.</p>
+        </div>
+      </article>
+
+      <article class="why">
+        <div class="wn">02</div>
+        <div>
+          <h3>It decides whether a risk-controlled system is deployable at all</h3>
+          <p>Nobody had shown whether a distribution-free rule such as SGR could lift coverage off zero when the
+          representation itself is estimated from five examples per class. Under a disjoint calibration split the tuned
+          baseline admits <em>no feasible threshold</em> at 5% risk on <b>six of the twelve corpora</b>; our selector
+          certifies non-zero coverage on four of those six. On RulingBR the tightest bound MSP can reach under
+          <em>any</em> threshold search is <var>b</var>*&thinsp;=&thinsp;0.211, while our selector certifies
+          <b>0.94 coverage</b>. That is the difference between a system that can be deployed under a risk constraint and
+          one that cannot.</p>
+        </div>
+      </article>
+
+      <article class="why">
+        <div class="wn">03</div>
+        <div>
+          <h3>Scale is not a substitute for geometry</h3>
+          <p>A prompted 7&thinsp;B model is <em>more</em> accurate than our 110&thinsp;M pipeline on reviews
+          (0.973 vs. 0.971) and still ranks its own errors worse (<b>AURC 0.011 vs. 0.004</b>), at roughly
+          2,756&thinsp;s of H100 time per fold against a single encoder pass plus <var>C</var> cosine comparisons. Its
+          advantage decays with label-space granularity until, on a 48-intent taxonomy, it falls <em>below</em> the
+          fine-tuned baseline it was meant to displace. Neither is a frozen multilingual encoder a substitute: it
+          matches us on generic review sentiment and falls 6.8&times; behind on legal text.</p>
+        </div>
+      </article>
+
+      <article class="why">
+        <div class="wn">04</div>
+        <div>
+          <h3>It names a methodological blind spot &mdash; and then removes it as an excuse</h3>
+          <p>Work in this area routinely omits <var>m</var>, the size of the set on which the threshold is selected, yet
+          <var>m</var> governs the bound: Brands sits at <var>m</var>&thinsp;=&thinsp;46 against a feasibility
+          requirement of <var>m</var>&thinsp;&ge;&thinsp;46, so its zero coverage is an artefact of sample size at the
+          exact boundary. But we then ran the sweep that disentangles <var>m</var> from score quality, subsampling the
+          calibration split from 5% to 100%: <b>seven of eight corpora sit at exactly zero coverage at every
+          fraction</b>, including one at <var>m</var>&thinsp;=&thinsp;21,016. Where the score does not separate, no
+          amount of calibration data recovers coverage.</p>
+        </div>
+      </article>
+
+      <article class="why">
+        <div class="wn">05</div>
+        <div>
+          <h3>Breadth, in two languages, with the failures reported</h3>
+          <p>Twelve Portuguese corpora and eight English ones under an identical protocol, five task families, three
+          budgets, five draws each &mdash; not a single toy benchmark. Corpora were not filtered for favourable results:
+          Brands and Eniac certify zero coverage for <em>every</em> method tested and are reported alongside the rest, as
+          is Reuters, the one corpus across all twenty where the baseline certifies and we do not.</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="pull narrow">
+      <p>We did not invent SGR or prototypical fine-tuning. The contribution is the evidence &mdash; at scale, in two
+      languages, with the two factors separated &mdash; that this is the combination that holds under extreme data
+      scarcity (5-shot), and that the confidence function the field has been optimising is not what carries the
+      effect.</p>
+      <p class="src">Scope, as everywhere on this page: the detailed grid covers four corpora, though the ladder it
+      summarises is measured on all twelve; its baseline-encoder prototypes are built from validation examples rather
+      than the training support, a deviation that favours the baseline. The ladder is monotone by median over the twelve
+      Portuguese corpora and by mean over the eight English ones, not corpus by corpus.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== METHOD ============================== -->
+<section id="method">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Method</div>
+      <h2>A pipeline of decoupled modules</h2>
+      <p class="lede">Representation learning, scoring and risk-calibrated thresholding are independent stages, so the
+      final rule applies regardless of what happens upstream &mdash; and any gain in confidence ranking translates
+      directly into higher coverage at a fixed target risk.</p>
+    </div>
+
+    <figure class="figure">
+      <div class="plate">
+        <svg class="pipe" viewBox="0 0 1100 210" role="img" aria-label="Pipeline: text is encoded by a Transformer, refined into episodic prototypes, scored by a geometric confidence function, and thresholded by SGR into predict or abstain.">
+          <rect class="dash" x="104" y="34" width="854" height="120" rx="12"/>
+          <text class="grp" x="112" y="26">DECOUPLED MODULE PIPELINE</text>
+          <text class="sub" x="10" y="98" text-anchor="start">input text</text>
+          <path class="edge" d="M86 94 H108" marker-end="url(#ar)"/>
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--rule-strong)"/>
+            </marker>
+          </defs>
+          <rect class="box" x="112" y="68" width="160" height="54" rx="9"/>
+          <text class="lab" x="192" y="90" text-anchor="middle">Encoder</text>
+          <text class="sub" x="192" y="107" text-anchor="middle">BERTimbau, 6 layers frozen</text>
+          <path class="edge" d="M272 95 H338" marker-end="url(#ar)"/>
+          <text class="edge-lab" x="307" y="86" text-anchor="middle">tokens</text>
+          <rect class="box" x="346" y="68" width="150" height="54" rx="9"/>
+          <text class="lab" x="421" y="90" text-anchor="middle">Episodic prototypes</text>
+          <text class="sub" x="421" y="107" text-anchor="middle">the operative ingredient</text>
+          <path class="edge" d="M496 95 H562" marker-end="url(#ar)"/>
+          <text class="edge-lab" x="531" y="86" text-anchor="middle">latent space</text>
+          <rect class="box" x="570" y="68" width="150" height="54" rx="9"/>
+          <text class="lab" x="645" y="90" text-anchor="middle">Geometric score</text>
+          <text class="sub" x="645" y="107" text-anchor="middle">&#954;(x) = max<tspan dy="3" font-size="8.5">c</tspan><tspan dy="-3">&#8202;&#964;&#8202;cos(z,&#8202;&#956;</tspan><tspan dy="3" font-size="8.5">c</tspan><tspan dy="-3">)</tspan></text>
+          <path class="edge" d="M720 95 H786" marker-end="url(#ar)"/>
+          <text class="edge-lab" x="755" y="86" text-anchor="middle">confidence</text>
+          <rect class="box box-a" x="794" y="68" width="156" height="54" rx="9"/>
+          <text class="lab" x="872" y="90" text-anchor="middle">SGR threshold</text>
+          <text class="sub" x="872" y="107" text-anchor="middle">binomial inversion at r*</text>
+          <path class="edge" d="M950 95 H974 V52 H1010" marker-end="url(#ar)"/>
+          <path class="edge" d="M950 95 H974 V138 H1010" marker-end="url(#ar)"/>
+          <text class="edge-lab" x="992" y="44" text-anchor="middle">&#954; &#8805; &#952;*</text>
+          <text class="edge-lab" x="992" y="158" text-anchor="middle">&#954; &lt; &#952;*</text>
+          <rect class="ok" x="1014" y="34" width="76" height="36" rx="8"/>
+          <text class="ok-t" x="1052" y="57" text-anchor="middle">Predict</text>
+          <rect class="no" x="1014" y="120" width="76" height="36" rx="8"/>
+          <text class="no-t" x="1052" y="143" text-anchor="middle">Abstain</text>
+        </svg>
+      </div>
+      <figcaption><b>Figure 1 &mdash; the pipeline.</b> A Transformer encoder, an episodically trained prototypical
+      space, a geometric confidence score, and an SGR thresholding step that selects <var>&theta;</var>* by inverting a
+      binomial tail bound at target risk <var>r</var>* and confidence <var>&delta;</var>. Calibration never sees OOD
+      data, so abstention on unseen classes is an <em>emergent</em> behaviour of the threshold, not a guaranteed one
+      &mdash; which is what the <a href="#certified">open-world gap</a> below measures.</figcaption>
+    </figure>
+
+    <div class="narrow">
+      <h3>1 &nbsp;Episodic prototypical representation</h3>
+      <p>Class prototypes are support means over the label-adapted representation,
+      <b>&mu;</b><sub><i>c</i></sub> = (1/<i>K</i>) &sum;<sub><i>k</i></sub> <b>z</b>(<i>x<sub>c,k</sub></i>), trained
+      episodically with a prototype-repulsion term added to cross-entropy. The backbone we benchmarked (LAQDA) adds a
+      label adapter and a query-neighbour augmentation step, both of which our ablation finds dispensable; the
+      configuration we recommend is the plain prototypical encoder.</p>
+      <div class="eq"><span class="tag">(1)</span>
+        <b>z</b>(<i>x</i>) = 0.1 &middot; <i>A</i><sub>&phi;</sub>(<i>Ĥ</i>(<i>x</i>))<sub>CLS</sub> + 0.9 &middot; <i>Ĥ</i>(<i>x</i>)<sub>CLS</sub>
+      </div>
+      <p>Raising the adapter's share of that mixture ninefold, to 0.9, moves AURC by 0.003 &mdash; an order of magnitude
+      inside the cross-fold standard deviation &mdash; so the ablation result is not an artefact of the inherited
+      weight.</p>
+
+      <h3>2 &nbsp;Geometric confidence</h3>
+      <p>Confidence and prediction are read off the same geometry, with an independently set temperature
+      <var>&tau;</var>. Because <var>&tau;</var>&thinsp;&gt;&thinsp;0 is a strictly monotone rescaling, it provably
+      cannot change AURC or the accepted set at any threshold. It is, as the <a href="#attribution">attribution
+      grid</a> shows, not the mechanism either: over a prototypically structured space, swapping this score for MSP
+      moves AURC by 0.001. Treat it as the natural read-out of the geometry, not as the thing that produces the gain
+      &mdash; on an unadapted representation MSP is in fact the better read-out.</p>
+      <div class="eq"><span class="tag">(2)</span>
+        &kappa;(<i>x</i>) = max<sub><i>c</i></sub> &tau;&thinsp;cos(<b>z</b>(<i>x</i>), <b>&mu;</b><sub><i>c</i></sub>)
+        &nbsp;&nbsp;&nbsp; <i>f</i>(<i>x</i>) = argmax<sub><i>c</i></sub> cos(<b>z</b>(<i>x</i>), <b>&mu;</b><sub><i>c</i></sub>)
+      </div>
+
+      <h3>3 &nbsp;The adopted thresholding rule (SGR)</h3>
+      <p>Given a threshold-selection set <var>S<sub>m</sub></var> of size <var>m</var>, a target risk <var>r</var>* and
+      a confidence level <var>&delta;</var>, SGR binary-searches over quantiles of <var>&kappa;</var>, inverting a
+      binomial tail at each candidate and keeping the most permissive threshold that still meets the target:</p>
+      <div class="eq"><span class="tag">(3)</span>
+        <i>b</i>* = sup{ <i>b</i> : &sum;<sub><i>j</i>=0</sub><sup><i>k</i><sub>&theta;</sub></sup>
+        C(<i>m</i><sub>&theta;</sub>, <i>j</i>)&thinsp;<i>b<sup>j</sup></i>(1&minus;<i>b</i>)<sup><i>m</i><sub>&theta;</sub>&minus;<i>j</i></sup> &ge; &delta;&prime; }
+      </div>
+      <div class="eq"><span class="tag">(4)</span>
+        <i>&theta;</i>* = min{ <i>&theta;</i> : <i>b</i>*(<i>m</i><sub>&theta;</sub>, <i>r&#770;</i><sub>&theta;</sub>, &delta;&prime;) &le; <i>r</i>* },
+        &nbsp; &delta;&prime; = &delta; / &lceil;log<sub>2</sub> <i>m</i>&rceil;
+      </div>
+      <p>The constraint is distribution-free and holds for <em>any</em> score &mdash; but validity and usefulness come
+      apart. The bound stays valid under a poor score while the coverage it yields collapses to zero. That gap is the
+      paper's subject.</p>
+    </div>
+
+    <div class="note narrow">
+      <h4>Why the certificate is about ID risk only</h4>
+      <p>For an OOD instance every acceptance is by definition an error, and calibration never sees OOD data. A
+      threshold tuned for ID errors therefore rejects unseen classes only insofar as the geometry places them at lower
+      confidence. We measure that behaviour; we do not certify it &mdash; and the measurement is unflattering.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== RESULTS ============================== -->
+<section id="results">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Results</div>
+      <h2>Selective classification across twelve corpora</h2>
+      <p class="lede">All post-hoc baselines share an identical fine-tuned encoder and differ only in the confidence
+      score. The comparison below is against MSP, the strongest of the seven, <b>at its oracle-swept configuration
+      &mdash; selected on the test set, an advantage we do not grant our own pipeline</b>.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h4>Area under the risk&ndash;coverage curve, 5-shot</h4>
+          <div class="sub">Mean over 5 folds. Lower is better. Computed over the full ID&thinsp;+&thinsp;OOD mixture. <span class="better" id="aurc-better"></span></div>
+        </div>
+        <div class="controls">
+          <span class="seg-lbl">Metric</span>
+          <div class="seg" role="group" aria-label="Metric"><button data-met="aurc" data-v="0" aria-pressed="true">AURC</button><button data-met="aurc" data-v="1" aria-pressed="false">E-AURC</button><button data-met="aurc" data-v="2" aria-pressed="false">Acc (ID)</button></div>
+          <div class="seg" role="group" aria-label="View">
+            <button data-view="chart" data-target="aurc" aria-pressed="true">Chart</button>
+            <button data-view="table" data-target="aurc" aria-pressed="false">Table</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend" id="aurc-legend">
+        <span><i style="background:var(--series-1)"></i>Ours (prototypical + SGR)</span>
+        <span><i style="background:var(--series-2)"></i>MSP, oracle-swept (best post-hoc baseline)</span>
+      </div>
+      <div class="panel-body" id="aurc-chart"><div class="chart" id="aurc-plot"></div></div>
+
+      <div class="panel-body hide" id="aurc-table">
+        <div class="tbl-wrap">
+          <table>
+            <caption><b>Table 1.</b> Selective classification at 5-shot, mean over 5 folds. E-AURC subtracts the AURC an
+            optimal ranker would achieve at the same error rate. Ours is better on all three metrics on all twelve
+            corpora; E-AURC discounts accuracy only partly, and the accuracy-invariant comparison is in the
+            <a href="#attribution">attribution grid</a>.</caption>
+            <thead>
+              <tr><th></th><th></th><th colspan="3" class="rule">MSP (swept)</th><th colspan="3" class="rule">Ours</th></tr>
+              <tr><th>Corpus</th><th>%OOD</th><th>AURC</th><th>E-AURC</th><th>Acc (ID)</th><th>AURC</th><th>E-AURC</th><th>Acc (ID)</th></tr>
+            </thead>
+            <tbody id="aurc-tbody"></tbody>
+          </table>
+        </div>
+        <p class="foot-note">Accuracy is over ID inputs only; AURC and E-AURC are over the full ID&thinsp;+&thinsp;OOD
+        mixture, in which every OOD input counts as an error.</p>
+      </div>
+    </div>
+
+    <div class="narrow">
+      <p>The largest gains appear where conventional few-shot classifiers fail most. AURC drops 92% on HateBR and 92% on
+      B2WReviews, 89% on RePro and 88% on Brands. The single largest gain is legal: <b>RulingBR goes from 0.450 to
+      0.073</b> (&minus;84%), with the study's largest ID accuracy gain, +45 points. The advantage is not confined to
+      the two tabulated risk levels &mdash; it holds across the whole risk&ndash;coverage curve &mdash; and it is not
+      explained by surface form, since a TF-IDF classifier on the same support is weaker than either method.</p>
+    </div>
+
+    <h3 class="narrow">All seven post-hoc baselines</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>AURC across all seven post-hoc baselines</h4><div class="sub">Twelve corpora &times; eight methods, 5-shot. Darker means worse. <span class="better" id="t2-better"></span></div></div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t2" aria-pressed="true">Chart</button><button data-view="table" data-target="t2" aria-pressed="false">Table</button></div></div>
+      </div>
+      
+      <div class="panel-body" id="t2-chart"><div class="heat" id="t2-plot"></div></div>
+      <div class="panel-body hide" id="t2-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 2.</b> AURC &darr; at 5-shot, mean over 5 folds, all seven post-hoc baselines at their
+        published configuration. Bold marks the best baseline per row; ours is lower than every baseline on every row.
+       
+        <sup>&dagger;</sup>RePro averages four folds: fold 01's archived report records its accuracy inverted relative
+        to its own saved logits, so we exclude it uniformly across all seven scorers.</caption>
+        <thead><tr><th>Corpus</th><th>MSP</th><th>Energy</th><th>Mahal.</th><th>kNN</th><th>GradNorm</th><th>ReAct</th><th>ConjNorm</th><th>Ours</th></tr></thead>
+        <tbody id="grid-tbody"></tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h4>Attainable coverage at a target risk</h4>
+          <div class="sub">Fraction of inputs the system answers rather than defers, with the threshold selected
+          in-sample. These are operating points, not certificates &mdash; see
+          <a href="#certified">Certification</a>. <span class="better" id="cov-better"></span></div>
+        </div>
+        <div class="controls">
+          <span class="seg-lbl">Budget</span>
+          <div class="seg" role="group" aria-label="Shot budget">
+            <button data-k="5" aria-pressed="true">5-shot</button>
+            <button data-k="10" aria-pressed="false">10-shot</button>
+          </div>
+          <span class="seg-lbl">Target risk</span>
+          <div class="seg" role="group" aria-label="Target risk">
+            <button data-r="5" aria-pressed="true">r* = 5%</button>
+            <button data-r="10" aria-pressed="false">r* = 10%</button>
+          </div>
+          <div class="seg" role="group" aria-label="View">
+            <button data-view="chart" data-target="cov" aria-pressed="true">Chart</button>
+            <button data-view="table" data-target="cov" aria-pressed="false">Table</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend"><span><i style="background:var(--series-1)"></i>Ours</span><span><i style="background:var(--series-2)"></i>MSP</span></div>
+      <div class="panel-body" id="cov-chart"><div class="chart" id="cov-plot"></div></div>
+      <div class="panel-body hide" id="cov-table">
+        <div class="tbl-wrap">
+          <table>
+            <caption><b>Table 3.</b> <em>Attainable</em> coverage at target risk <var>r</var>*, mean over 5 folds,
+            <var>&delta;</var>&thinsp;=&thinsp;0.05, threshold selected on the evaluation split by the same procedure for
+            both methods. MSP is oracle-swept at 5-shot and at its published configuration at 10-shot, since the sweep
+            covers 5-shot only. &ldquo;&asymp;0&rdquo; is below 0.01. Each cell reads MSP&thinsp;&rarr;&thinsp;Ours.</caption>
+            <thead>
+              <tr><th></th><th colspan="2" class="rule">5-shot</th><th colspan="2" class="rule">10-shot</th></tr>
+              <tr><th>Corpus</th><th>SGR@5%</th><th>SGR@10%</th><th>SGR@5%</th><th>SGR@10%</th></tr>
+            </thead>
+            <tbody id="cov-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="narrow">
+      <p>Under that rule ours leads MSP on ten of twelve corpora at both risk levels, with mean coverage 0.50 vs. 0.13
+      at 5% and 0.62 vs. 0.24 at 10% (<em>p</em>&thinsp;=&thinsp;0.00195 by a Wilcoxon signed-rank test at both levels,
+      ties at &asymp;0 discarded).</p>
+    </div>
+
+    <div class="note narrow warn">
+      <h4>Two rows that measure the protocol, not the method &mdash; and the sweep that proves it</h4>
+      <p><b>Brands</b> collapses to &asymp;0 coverage despite 0.978 accuracy because its threshold-selection set sits
+      exactly at the feasibility boundary (<var>m</var>&thinsp;=&thinsp;46 against a bound of
+      <var>m</var>&thinsp;&ge;&thinsp;46 at 10% risk). <b>Eniac</b> collapses because its held-out OOD mass floors the
+      empirical risk over the mixture at &asymp;20%.</p>
+      <p>That invites an obvious objection &mdash; that the baselines' collapse is really a small-<var>m</var> artefact
+      too. We ran the sweep that settles it, subsampling the calibration split to 5, 10, 25, 50 and 100% of its size at
+      fixed representation and score: <b>seven of eight corpora sit at exactly zero coverage at every fraction</b>,
+      including Recognasumm at <var>m</var>&thinsp;=&thinsp;21,016 and IntentPT at <var>m</var>&thinsp;=&thinsp;2,514,
+      both orders of magnitude above the feasibility bound. Only B2WReviews, which is not degenerate to begin with,
+      rises with <var>m</var> (0.25&thinsp;&rarr;&thinsp;0.51). Where the score does not separate correct from
+      incorrect, no amount of calibration data recovers coverage.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== ATTRIBUTION ============================== -->
+<section id="attribution">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Attribution</div>
+      <h2>Representation or score?</h2>
+      <p class="lede">The headline comparison changes two things at once: the representation <em>and</em> the confidence
+      score. A 4&times;2 grid separates them, evaluating two scores over four representations &mdash; a frozen
+      multilingual encoder, a conventionally fine-tuned one, SetFit, and ours. The answer is not the one we expected.</p>
+    </div>
+
+    <div class="narrow">
+      <figure class="figure" style="margin-top:1.4rem">
+        <div class="mtx">
+          <div></div>
+          <div class="h">MSP score</div>
+          <div class="h">Cosine score</div>
+          <div class="rh">CE encoder</div>
+          <div class="c">0.450<small>Table 1 baseline</small></div>
+          <div class="c">0.518<small>worse than MSP</small></div>
+          <div class="rh">Prototypical</div>
+          <div class="c best">0.072<small>&nbsp;</small></div>
+          <div class="c best">0.073<small>our pipeline</small></div>
+        </div>
+        <div class="deltas">
+          <span class="delta">Across a row &mdash; change only the <b>score</b>: &Delta; <b>0.001</b></span>
+          <span class="delta">Down a column &mdash; change only the <b>representation</b>: &Delta; <b>0.378</b></span>
+        </div>
+        <figcaption><b>Figure 2 &mdash; two rungs of the ladder on RulingBR</b> (AURC &darr;, 5-shot, mean over 5
+        folds). The two prototypical cells come from the same forward pass, so they share a representation <em>and</em>
+        a prediction, and differ only in how confidence is read.</figcaption>
+      </figure>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>The 4&times;2 grid, corpus by corpus</h4><div class="sub">Four representations &times; two scores. The bars move down the rungs, not across each pair. <span class="better" id="t4-better"></span></div></div>
+        <div class="controls"><span class="seg-lbl">Metric</span><div class="seg" role="group" aria-label="Metric"><button data-met="t4" data-v="0" aria-pressed="true">AURC</button><button data-met="t4" data-v="1" aria-pressed="false">AUROC</button></div><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t4" aria-pressed="true">Chart</button><button data-view="table" data-target="t4" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t4-legend"></div>
+      <div class="panel-body" id="t4-chart"><div class="facets" id="t4-plot"></div></div>
+      <div class="panel-body hide" id="t4-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 4.</b> The full 4&times;2 grid, 5-shot, mean over 5 folds. Frozen is the better of BGE-M3 and
+        multilingual-E5 per corpus, chosen on test; CE is at its best of three learning-rate settings and SetFit at its
+        best of three training settings on B2W and TuPy, also chosen on test &mdash; oracle advantages granted to the
+        baselines and not to us. Changing the representation moves the numbers; changing the score within a
+        representation barely does.</caption>
+        <thead><tr><th>Repr.</th><th>Score</th><th>B2W</th><th>Intent</th><th>Ruling</th><th>TuPy</th></tr></thead>
+        <tbody>
+          <tr class="sub"><td colspan="6">AURC &darr;</td></tr>
+          <tr><td>Frozen</td><td>MSP</td><td>0.014</td><td>0.217</td><td>0.498</td><td>0.229</td></tr>
+          <tr><td>Frozen</td><td>cos</td><td>0.017</td><td>0.260</td><td>0.566</td><td>0.322</td></tr>
+          <tr><td>CE</td><td>MSP</td><td>0.048</td><td>0.283</td><td>0.450</td><td>0.167</td></tr>
+          <tr><td>CE</td><td>cos</td><td>0.064</td><td>0.293</td><td>0.518</td><td>0.343</td></tr>
+          <tr><td>SetFit</td><td>MSP</td><td>0.040</td><td>0.272</td><td>0.347</td><td>0.294</td></tr>
+          <tr><td>SetFit</td><td>cos</td><td>0.028</td><td>0.268</td><td>0.354</td><td>0.413</td></tr>
+          <tr><td>proto</td><td>MSP</td><td class="win">0.004</td><td class="win">0.115</td><td class="win">0.072</td><td>0.068</td></tr>
+          <tr><td>proto</td><td>cos</td><td class="win">0.004</td><td>0.117</td><td>0.073</td><td class="win">0.066</td></tr>
+          <tr class="sub"><td colspan="6">Correct-vs-incorrect AUROC &uarr; (over ID inputs, accuracy-invariant)</td></tr>
+          <tr><td>Frozen</td><td>MSP</td><td>0.848</td><td>0.829</td><td>0.688</td><td>0.651</td></tr>
+          <tr><td>Frozen</td><td>cos</td><td>0.787</td><td>0.739</td><td>0.561</td><td>0.512</td></tr>
+          <tr><td>CE</td><td>MSP</td><td>0.811</td><td>0.806</td><td>0.704</td><td>0.600</td></tr>
+          <tr><td>CE</td><td>cos</td><td>0.691</td><td>0.776</td><td>0.619</td><td>0.598</td></tr>
+          <tr><td>SetFit</td><td>MSP</td><td>0.819</td><td>0.826</td><td>0.751</td><td>0.620</td></tr>
+          <tr><td>SetFit</td><td>cos</td><td>0.844</td><td>0.828</td><td>0.737</td><td>0.538</td></tr>
+          <tr><td>proto</td><td>MSP</td><td>0.898</td><td class="win">0.876</td><td class="win">0.936</td><td class="win">0.781</td></tr>
+          <tr><td>proto</td><td>cos</td><td class="win">0.917</td><td>0.863</td><td>0.929</td><td>0.779</td></tr>
+        </tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+
+    <div class="narrow">
+      <p><b>The representation carries essentially the entire effect and the score carries almost none.</b> Holding the
+      score fixed at MSP, moving from the CE baseline to the prototypical encoder takes RulingBR from 0.450 to 0.072;
+      holding the representation fixed, switching from MSP to our cosine score moves it from 0.072 to 0.073. Across
+      twelve corpora the mean absolute difference between the two scores over the prototypical representation is
+      <b>0.0036</b> (median 0.0023), with no consistent winner. The accuracy-invariant panel says the same: over the
+      prototypical representation the two scores differ by at most 0.019.</p>
+    </div>
+
+    <h3 class="narrow">The ladder: how much the score matters, by how much the space was adapted</h3>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h4>Score sensitivity falls with adaptation</h4>
+          <div class="sub">Absolute gap between the two scores read off the same representation, in correct-vs-incorrect
+          AUROC over ID inputs. Lower means the choice of score matters less. <span class="better" id="ladder-better"></span></div>
+        </div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="ladder" aria-pressed="true">Chart</button><button data-view="table" data-target="ladder" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--series-1)"></i>Portuguese (median, 12 corpora)</span>
+        <span><i style="background:var(--series-2)"></i>English (mean, 8 corpora)</span>
+      </div>
+      <div class="panel-body" id="ladder-chart"><div class="chart" id="ladder-plot"></div></div>
+      <div class="panel-body hide" id="ladder-table">
+        <div class="tbl-wrap">
+          <table>
+            <caption><b>Table 18.</b> Absolute gap between the two scores read off the same representation, in correct-vs-incorrect AUROC over ID inputs. Portuguese is the median over the twelve corpora, English the mean over the eight.</caption>
+            <thead><tr><th>Representation</th><th>Portuguese</th><th>English</th></tr></thead>
+            <tbody id="ladder-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="narrow">
+      <p>From no adaptation to episodic prototypical training the gap falls from 0.107 to 0.014, a factor of about
+      eight, and the English replication gives 0.110 to 0.014 over its eight corpora. <b>Which scalar is read off the
+      space matters most exactly where the space was never shaped for the task, and becomes almost irrelevant once it
+      was.</b></p>
+      <p>Two qualifications we state rather than round away. The step from a frozen encoder to a conventionally
+      fine-tuned one is <em>not</em> resolvable at this sample size (0.107 against 0.099); only the two steps involving
+      representation learning explicitly structured for the task &mdash; contrastive and episodic &mdash; survive, and
+      those are separated by a factor of four. And the ladder is monotone by median over the twelve Portuguese corpora
+      and by mean over the eight English ones, <em>not</em> corpus by corpus.</p>
+      <p>Decomposing the gap by score says <em>why</em>, and the answer is one-directional: across the four rungs MSP
+      rises 0.754&thinsp;&rarr;&thinsp;0.730&thinsp;&rarr;&thinsp;0.754&thinsp;&rarr;&thinsp;0.873 while the cosine
+      score rises 0.650&thinsp;&rarr;&thinsp;0.671&thinsp;&rarr;&thinsp;0.737&thinsp;&rarr;&thinsp;0.872. <b>MSP is at
+      least as good as the cosine score on every representation in both languages</b>; the gap closes because adaptation
+      rescues the geometric read-out until it merely ties. The honest statement is not that our confidence function is
+      better &mdash; it never is &mdash; but that on an adapted representation the choice of read-out stops costing
+      anything.</p>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="n">REFINEMENT 01</div>
+        <h4>A frozen encoder: split verdict</h4>
+        <p>On B2WReviews it attains the <em>lowest</em> AURC of the four representations (0.014) and certifies 0.98
+        coverage without a single gradient step. But on RulingBR it collapses to 0.498 &mdash; worse than a
+        conventionally fine-tuned BERTimbau and 6.8&times; behind ours &mdash; certifying no coverage at all. Pretrained
+        multilingual geometry suffices for generic high-resource tasks and is no substitute on specialist ones.</p>
+      </div>
+      <div class="card">
+        <div class="n">REFINEMENT 02</div>
+        <h4>SetFit: membership in the family is not sufficient</h4>
+        <p>Contrastive fine-tuning recovers part of the effect where the baseline is weakest (RulingBR
+        0.450&thinsp;&rarr;&thinsp;0.347) but not elsewhere, and even oracle-tuned stays 7&times; behind us on
+        B2WReviews and 4.5&times; on TuPy, certifying nothing on TuPy where we certify 0.23. <b>How</b> the
+        representation is restructured matters as much as whether it is.</p>
+      </div>
+      <div class="card">
+        <div class="n">REFINEMENT 03</div>
+        <h4>At one shot, SetFit collapses entirely</h4>
+        <p>At <var>K</var>&thinsp;=&thinsp;1 it is worse than the CE baseline on three of four corpora and certifies
+        zero coverage everywhere, because its positive pairs degenerate into self-pairs when a class has a single
+        example &mdash; where an episodic prototype is still well defined, if noisy. We state the mechanism as a
+        hypothesis: we swept hyperparameters only at 5-shot.</p>
+      </div>
+    </div>
+
+    <div class="note narrow">
+      <h4>This does not collapse into &ldquo;fine-tuning yields a better classifier&rdquo;</h4>
+      <p>Correct-vs-incorrect AUROC is computed over ID inputs only and is invariant to how many the model gets right.
+      Against the Table 1 baseline it rises from 0.704 to 0.929 on RulingBR, 0.600 to 0.779 on TuPy, 0.811 to 0.917 on
+      B2WReviews and 0.806 to 0.863 on IntentPT. Matching accuracy by subsampling gives AURC 0.029 vs. 0.048, 0.251 vs.
+      0.283, 0.310 vs. 0.450 and 0.102 vs. 0.188 &mdash; better on all four. The ranking advantage survives when the
+      accuracy advantage is removed entirely, on either population.</p>
+      <p>But the improvement is a property of the learned geometry, and attributing it to our choice of confidence
+      function &mdash; as an earlier framing of this work did &mdash; is not supported by the data.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CERTIFIED ============================== -->
+<section id="certified">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Certification</div>
+      <h2>From attainable to certified</h2>
+      <p class="lede">On <b>all twelve corpora</b> we re-ran the pipeline selecting the threshold on the ID validation
+      split and applying it unchanged to test. That split is disjoint from both the support set and the evaluation set,
+      so the independence condition of the bound is met and every number below is certified in the sense of Geifman
+      &amp; El-Yaniv.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Certified ID coverage, twelve corpora</h4><div class="sub">Threshold fitted on the ID validation split and applied unchanged to test. <span class="better" id="t5-better"></span></div></div>
+        <div class="controls"><span class="seg-lbl">Target risk</span><div class="seg" role="group" aria-label="Target risk"><button data-r5="t5" data-v="5" aria-pressed="true">r* = 5%</button><button data-r5="t5" data-v="10" aria-pressed="false">r* = 10%</button></div><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t5" aria-pressed="true">Chart</button><button data-view="table" data-target="t5" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t5-legend"></div>
+      <div class="panel-body" id="t5-chart"><div class="chart" id="t5-plot"></div></div>
+      <div class="panel-body hide" id="t5-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 5.</b> <em>Certified</em> ID coverage and realised ID selective risk at target risk
+        <var>r</var>*, 5-shot, mean over 5 folds, <var>&delta;</var>&thinsp;=&thinsp;0.05, all twelve corpora. MSP is at
+        its swept configuration. &ldquo;&mdash;&rdquo; marks an infeasible target, where no threshold satisfies the
+        bound and no risk is defined.</caption>
+        <thead>
+          <tr><th></th><th colspan="4" class="rule">r* = 5%</th><th colspan="4" class="rule">r* = 10%</th></tr>
+          <tr><th>Corpus</th><th>MSP cov</th><th>risk</th><th>Ours cov</th><th>risk</th><th>MSP cov</th><th>risk</th><th>Ours cov</th><th>risk</th></tr>
+        </thead>
+        <tbody id="cert-tbody"></tbody>
+      </table>
+      <p class="foot-note">Of the 120 corpus-fold-level cells, 97 admit a feasible threshold and the certificate is
+      violated in <b>two</b> of those 97 &mdash; a rate of 2.1% against the nominal
+      <var>&delta;</var>&thinsp;=&thinsp;5%. Both violations are third-decimal (Buscape fold 02 realises 0.0503 at a 5%
+      target; HateBR fold 01 realises 0.1012 at 10%). Infeasible cells are excluded from the denominator and the 97
+      cells are not independent, so this is a consistency check against <var>&delta;</var>, not a binomial test of it.</p>
+    </div>
+      </div>
+    </div>
+
+    <div class="narrow">
+      <p><b>The ordering survives certification and widens.</b> Our selector certifies more coverage on ten of twelve
+      corpora at 5% and eleven of twelve at 10%, with mean certified coverage 0.569 against 0.136 and 0.731 against
+      0.278. MSP admits no feasible threshold at 5% on six of the twelve &mdash; Brands, Eniac, HateBR, IntentPT,
+      RulingBR and TuPy &mdash; while ours certifies non-zero coverage on four of those six. The two exceptions are the
+      two corpora where every method collapses, and we report them rather than omitting them: <em>a certificate that
+      returns zero coverage is the procedure behaving correctly on a score that cannot support the target.</em></p>
+      <p>Infeasibility is a property of the confidence values, not of the search: scanning every threshold in the
+      calibration split, the tightest bound MSP reaches is <var>b</var>*&thinsp;=&thinsp;0.211 on RulingBR and 0.068 on
+      IntentPT. No threshold meeting 10% on RulingBR or 5% on IntentPT exists under any search.</p>
+    </div>
+
+    <h3 class="narrow">Against SetFit, on the deep-dive corpora</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Certified coverage against SetFit</h4><div class="sub">Four deep-dive corpora, three methods. Missing bars are infeasible targets. <span class="better" id="t6-better"></span></div></div>
+        <div class="controls"><span class="seg-lbl">Target risk</span><div class="seg" role="group" aria-label="Target risk"><button data-r5="t6" data-v="5" aria-pressed="true">r* = 5%</button><button data-r5="t6" data-v="10" aria-pressed="false">r* = 10%</button></div><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t6" aria-pressed="true">Chart</button><button data-view="table" data-target="t6" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t6-legend"></div>
+      <div class="panel-body" id="t6-chart"><div class="chart" id="t6-plot"></div></div>
+      <div class="panel-body hide" id="t6-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 6.</b> Certified coverage with a SetFit row, 5-shot, mean over 5 folds. SetFit is at the
+        library default, at its better score chosen on test; its own configuration sweep reaches 0.76 on B2W. An
+        infeasible target &mdash; no threshold meets the risk target &mdash; is reported as 0.00 coverage, the same
+        convention as Table 5.</caption>
+        <thead><tr><th>r*</th><th>Method</th><th>B2W</th><th>Intent</th><th>Ruling</th><th>TuPy</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="3">5%</td><td>CE + MSP</td><td>0.59</td><td>0.00</td><td>0.00</td><td>0.00</td></tr>
+          <tr><td>SetFit</td><td>0.40</td><td>0.07</td><td>0.07</td><td>0.00</td></tr>
+          <tr><td>Ours</td><td class="win">1.00</td><td class="win">0.63</td><td class="win">0.94</td><td class="win">0.23</td></tr>
+          <tr class="sep"><td rowspan="3">10%</td><td>CE + MSP</td><td>0.82</td><td>0.24</td><td>0.00</td><td>0.00</td></tr>
+          <tr><td>SetFit</td><td>0.77</td><td>0.21</td><td>0.19</td><td>0.00</td></tr>
+          <tr><td>Ours</td><td class="win">1.00</td><td class="win">0.86</td><td class="win">1.00</td><td class="win">0.65</td></tr>
+        </tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+
+    <h3 class="narrow">The choice of risk-control rule is not neutral either</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>SGR vs. CRC vs. Learn-then-Test</h4><div class="sub">Certified ID coverage over our own representation. <span class="better" id="t7-better"></span></div></div>
+        <div class="controls"><span class="seg-lbl">Target risk</span><div class="seg" role="group" aria-label="Target risk"><button data-r5="t7" data-v="5" aria-pressed="true">r* = 5%</button><button data-r5="t7" data-v="10" aria-pressed="false">r* = 10%</button></div><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t7" aria-pressed="true">Chart</button><button data-view="table" data-target="t7" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t7-legend"></div>
+      <div class="panel-body" id="t7-chart"><div class="chart" id="t7-plot"></div></div>
+      <div class="panel-body hide" id="t7-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 7.</b> Certified ID coverage under three risk-control rules over <em>our</em> representation,
+        5-shot, mean over 5 folds, calibrated on the ID validation split. CRC is never below SGR and is strictly above
+        it on nine of twelve at both levels; LTT is below SGR on eight.</caption>
+        <thead>
+          <tr><th></th><th colspan="3" class="rule">r* = 5%</th><th colspan="3" class="rule">r* = 10%</th></tr>
+          <tr><th>Corpus</th><th>SGR</th><th>CRC</th><th>LTT</th><th>SGR</th><th>CRC</th><th>LTT</th></tr>
+        </thead>
+        <tbody id="frw-tbody"></tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+
+    <div class="note narrow">
+      <h4>We would now recommend CRC as the default, with SGR as the conservative fallback</h4>
+      <p>CRC obtains its advantage by not paying for the threshold search, which is valid only when selective risk is
+      monotone in the threshold &mdash; a condition selective risk does not guarantee in general. That condition is
+      testable on the calibration splits we already hold, so we measured it rather than assuming it: over 200 threshold
+      quantiles per fold, the <b>mean largest violation across the twelve corpora is 0.0061</b>, with seven below 0.003
+      and a worst case of 0.0207 on Eniac. At these magnitudes the empirical risk is monotone up to sampling noise.</p>
+      <p>The gap is concentrated where SGR's union correction costs most: on Brands, whose
+      <var>m</var>&thinsp;=&thinsp;45 sits one point below SGR's feasibility bound at 10%, <b>CRC turns a certified
+      0.000 into 0.933</b> &mdash; so some of what we attribute to small <var>m</var> is attributable to the correction
+      instead. LTT, which controls the search with a Bonferroni correction, is worse than SGR on every corpus.</p>
+    </div>
+
+    <div class="note narrow warn">
+      <h4>The number a practitioner most needs: certified &ne; safe under shift</h4>
+      <p>Applied to the full ID&thinsp;+&thinsp;OOD mixture, the same certified thresholds accept 0.86 of RulingBR at
+      <var>r</var>*&thinsp;=&thinsp;5% &mdash; and because accepted OOD inputs are errors by definition, the
+      <b>realised risk becomes 15.2% against a 5% target</b>, and 23.2% against 10%. On IntentPT the pair is 10.0% and
+      20.7%. Equivalently, the 5% threshold admits 52% of all OOD inputs on RulingBR.</p>
+      <p>The mechanism is arithmetic, and it runs opposite to intuition: the threshold is chosen to meet an <em>ID</em>
+      risk target, so a cleaner ID geometry earns a <em>more permissive</em> threshold, and a permissive threshold
+      admits OOD regardless of how well the score ranks it. RulingBR has the study's best ID/OOD separation (AUROC
+      0.893) yet admits 52% of OOD; IntentPT separates worse (0.797) and admits 19%. <b>Good ID representation buys
+      coverage, not open-world safety, and the two can move in opposite directions on the same corpus.</b></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CROSSLINGUAL ============================== -->
+<section id="crosslingual">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Cross-lingual replication</div>
+      <h2>Eight English corpora, identical protocol</h2>
+      <p class="lede">Every headline result above is Brazilian Portuguese, so the attribution could be a property of the
+      language, the corpora or the encoder. We repeated the pipeline and the grid on eight English corpora with
+      <code>bert-base-uncased</code> substituted for BERTimbau throughout &mdash; same folds, same support, same
+      calibration split, same SGR code, so that the language changes and nothing else does.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>English corpora: CE baseline vs. ours</h4><div class="sub">Identical protocol, bert-base-uncased in place of BERTimbau. <span class="better" id="t8-better"></span></div></div>
+        <div class="controls"><span class="seg-lbl">Metric</span><div class="seg" role="group" aria-label="Metric"><button data-met="t8" data-v="0" aria-pressed="true">AURC</button><button data-met="t8" data-v="1" aria-pressed="false">AUROC</button></div><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t8" aria-pressed="true">Chart</button><button data-view="table" data-target="t8" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t8-legend"></div>
+      <div class="panel-body" id="t8-chart"><div class="chart" id="t8-plot"></div></div>
+      <div class="panel-body hide" id="t8-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 8.</b> English corpora, 5-shot, mean over 5 folds. The CE baseline receives the same
+        three-configuration oracle learning-rate sweep, chosen on test, that it receives in Portuguese. Correct-vs-
+        incorrect AUROC is undefined for SST-2, whose two ID classes leave no OOD partition.</caption>
+        <thead>
+          <tr><th></th><th colspan="3" class="rule">AURC &darr;</th><th colspan="2" class="rule">AUROC c-v-i &uarr;</th></tr>
+          <tr><th>Corpus</th><th>CE</th><th>Ours</th><th>&Delta;%</th><th>CE</th><th>Ours</th></tr>
+        </thead>
+        <tbody id="en-tbody"></tbody>
+      </table>
+      <p class="foot-note">Median reduction 56.8% against 66.9% in Portuguese; Wilcoxon
+      <em>p</em>&thinsp;=&thinsp;0.0078, the smallest value attainable at <var>n</var>&thinsp;=&thinsp;8, with a median
+      paired difference of 0.127 (95% bootstrap [0.077, 0.191]). The smaller margin is the expected direction:
+      <code>bert-base-uncased</code> is a stronger starting point for English than BERTimbau is for the specialist
+      Portuguese domains.</p>
+    </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Certified coverage in English, r* = 5%</h4><div class="sub">Infeasible folds contribute zero coverage to the mean. <span class="better" id="t9-better"></span></div></div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t9" aria-pressed="true">Chart</button><button data-view="table" data-target="t9" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t9-legend"></div>
+      <div class="panel-body" id="t9-chart"><div class="chart" id="t9-plot"></div></div>
+      <div class="panel-body hide" id="t9-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 9.</b> Certified ID coverage at <var>r</var>*&thinsp;=&thinsp;5% on the English corpora,
+        5-shot. &ldquo;feas.&rdquo; counts the folds admitting a feasible threshold; infeasible folds contribute zero to
+        the mean. The 10% level was not stored by these runs.</caption>
+        <thead>
+          <tr><th></th><th colspan="2" class="rule">MSP</th><th colspan="2" class="rule">Ours</th></tr>
+          <tr><th>Corpus</th><th>cov</th><th>feas.</th><th>cov</th><th>feas.</th></tr>
+        </thead>
+        <tbody id="encert-tbody"></tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+
+    <div class="note narrow warn">
+      <h4>The one case in either language where the baseline certifies and we do not</h4>
+      <p>On <b>Reuters</b> the ordering reverses: MSP finds a feasible threshold on one of five folds and our selector
+      on none. StackOverflow is infeasible for both. These are the two English corpora with the least favourable ratio
+      of calibration size to label cardinality (34 and 251 ID classes), and the two where our AURC advantage is smallest
+      (29.8% and 21.6% against 53&ndash;91% elsewhere) &mdash; consistent with the certificate being hardest exactly
+      where the score separates least, though with two corpora we cannot distinguish that from chance. We report it
+      rather than restricting the table to the seven favourable rows.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== ANALYSIS ============================== -->
+<section id="analysis">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Analysis</div>
+      <h2>Budgets, OOD, ablation, backbones, LLMs</h2>
+    </div>
+
+    <h3 class="narrow">Effect of the shot budget</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h4>AURC versus budget <var>K</var></h4>
+          <div class="sub">Mean over 5 folds, bars are one standard deviation. MSP is at its published configuration at
+          all three budgets, since the oracle sweep covers 5-shot only. Note the per-panel vertical scale. <span class="better" id="kshot-better"></span></div>
+        </div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="kshot" aria-pressed="true">Chart</button><button data-view="table" data-target="kshot" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend"><span><i style="background:var(--series-1)"></i>Ours</span><span><i style="background:var(--series-2)"></i>MSP</span></div>
+      <div class="panel-body" id="kshot-chart"><div class="sm" id="kshot-plot"></div></div>
+      <div class="panel-body hide" id="kshot-table">
+        <div class="tbl-wrap">
+          <table>
+            <caption><b>Table 17.</b> AURC &darr; versus budget <var>K</var>, mean &plusmn; std over 5 folds. MSP is at its published configuration at all three budgets.</caption>
+            <thead><tr><th>Corpus / method</th><th>1-shot</th><th>5-shot</th><th>10-shot</th></tr></thead>
+            <tbody id="ks-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="narrow">
+      <p>The advantage is largest under extreme scarcity, consistent with the mechanism: at
+      <var>K</var>&thinsp;=&thinsp;1 the unadapted prototype <em>is</em> the single support embedding, with no averaging
+      to damp representation noise. RulingBR is the widest margin in all three regimes; the relative margin narrows from
+      1- to 10-shot on review corpora as MSP itself benefits from more data.</p>
+    </div>
+
+    <h3 class="narrow">OOD detection under class holdout</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>OOD detection under class holdout</h4><div class="sub">The five corpora with held-out classes, 5-shot. <span class="better" id="t10-better"></span></div></div>
+        <div class="controls"><span class="seg-lbl">Metric</span><div class="seg" role="group" aria-label="Metric"><button data-met="t10" data-v="0" aria-pressed="true">AUROC</button><button data-met="t10" data-v="1" aria-pressed="false">FPR@95</button></div><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t10" aria-pressed="true">Chart</button><button data-view="table" data-target="t10" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t10-legend"></div>
+      <div class="panel-body" id="t10-chart"><div class="chart" id="t10-plot"></div></div>
+      <div class="panel-body hide" id="t10-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 10.</b> OOD detection at 5-shot on the five corpora with held-out classes, means over 5
+        folds.</caption>
+        <thead>
+          <tr><th></th><th colspan="2" class="rule">AUROC &uarr;</th><th colspan="2" class="rule">FPR@95 &darr;</th></tr>
+          <tr><th>Corpus</th><th>MSP</th><th>Ours</th><th>MSP</th><th>Ours</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Eniac</td><td>0.553</td><td class="win">0.685</td><td>0.928</td><td class="win">0.803</td></tr>
+          <tr><td>Recognasumm</td><td>0.657</td><td class="win">0.770</td><td>0.864</td><td class="win">0.794</td></tr>
+          <tr><td>IntentPT</td><td>0.679</td><td class="win">0.797</td><td>0.871</td><td class="win">0.771</td></tr>
+          <tr><td>MMLU-PT-BR</td><td>0.702</td><td class="win">0.804</td><td>0.861</td><td class="win">0.787</td></tr>
+          <tr><td>RulingBR</td><td>0.555</td><td class="win">0.893</td><td>0.931</td><td class="win">0.472</td></tr>
+        </tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+    <div class="narrow">
+      <p>Rejecting <em>near</em>-OOD from few-shot prototypes is only partial &mdash; FPR@95 stays high throughout. But
+      that difficulty is specific to the class-holdout protocol, which produces near-OOD by construction: held-out and
+      retained classes share domain, register and much of the vocabulary. Substituting text from an unrelated domain for
+      the held-out classes, with the checkpoint untouched, raises AUROC to <b>0.986 on Eniac and 0.997 on RulingBR</b>.
+      Far-OOD is close to saturated for this geometry.</p>
+    </div>
+
+    <h3 class="narrow">Ablation: which ingredient does the work?</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Ablation on IntentPT</h4><div class="sub">Whiskers are one cross-fold standard deviation. <span class="better" id="t11-better"></span></div></div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t11" aria-pressed="true">Chart</button><button data-view="table" data-target="t11" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t11-legend"></div>
+      <div class="panel-body" id="t11-chart"><div class="chart" id="t11-plot"></div></div>
+      <div class="panel-body hide" id="t11-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 11.</b> Ablation on IntentPT (48 classes), AURC &darr;, mean &plusmn; std over 5 folds. All
+        four configurations beat every post-hoc baseline on this corpus by a wide margin (0.105&ndash;0.119 against
+        0.282 for the swept MSP).</caption>
+        <thead><tr><th>Configuration</th><th>1-shot</th><th>5-shot</th><th>10-shot</th></tr></thead>
+        <tbody>
+          <tr><td>Full (label adapter + QDA)</td><td>.138&thinsp;<span class="pm">±.020</span></td><td>.117&thinsp;<span class="pm">±.027</span></td><td>.113&thinsp;<span class="pm">±.026</span></td></tr>
+          <tr><td>w/o QDA sampler</td><td>.134&thinsp;<span class="pm">±.017</span></td><td class="win">.105&thinsp;<span class="pm">±.023</span></td><td class="win">.103&thinsp;<span class="pm">±.021</span></td></tr>
+          <tr><td>w/o label encoder</td><td>.139&thinsp;<span class="pm">±.015</span></td><td>.119&thinsp;<span class="pm">±.026</span></td><td>.113&thinsp;<span class="pm">±.024</span></td></tr>
+          <tr><td>Plain prototypical</td><td class="win">.131&thinsp;<span class="pm">±.018</span></td><td>.107&thinsp;<span class="pm">±.024</span></td><td>.106&thinsp;<span class="pm">±.024</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+    <div class="note narrow">
+      <h4>The label adapter is dispensable &mdash; and that makes the finding stronger</h4>
+      <p>A plain prototypical encoder &mdash; no label semantics, no query augmentation &mdash; reproduces full LAQDA on
+      all twelve corpora, mean AURC <b>0.075 against 0.074</b>, differing by 0.004 on average and lower on six of
+      twelve. The operative ingredient is <b>episodic prototypical fine-tuning</b> &mdash; and, per the
+      <a href="#attribution">attribution grid</a>, not the score it is read with either. So the coverage gains do not
+      depend on a particular adapter, and the lever is available to any practitioner already using prototypical
+      networks.</p>
+    </div>
+
+    <h3 class="narrow">How much depends on the encoder?</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Backbone and read-out controls</h4><div class="sub">Same folds, support sets and calibration protocol. <span class="better" id="t12-better"></span></div></div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t12" aria-pressed="true">Chart</button><button data-view="table" data-target="t12" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t12-legend"></div>
+      <div class="panel-body" id="t12-chart"><div class="chart" id="t12-plot"></div></div>
+      <div class="panel-body hide" id="t12-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 12.</b> AURC &darr; at 5-shot, mean over 5 folds: the swept MSP baseline, our pipeline on
+        BERTimbau, the same pipeline on XLM-R base, and a logistic probe on frozen embeddings at the better of BGE-M3
+        and multilingual-E5 per corpus chosen on test. All four share folds, support sets and calibration
+        protocol.</caption>
+        <thead><tr><th>Corpus</th><th>MSP</th><th>Ours</th><th>XLM-R</th><th>Frozen + probe</th></tr></thead>
+        <tbody id="alt-tbody"></tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+    <div class="narrow">
+      <p>Two controls, and both cut against an unqualified reading. <b>The mechanism is not encoder-independent</b>:
+      XLM-R still beats the swept baseline on nine of twelve corpora but its mean AURC is 0.194 against BERTimbau's
+      0.074, with the losses concentrated on colloquial Brazilian review and social-media text (TuPy 0.550 vs. 0.068,
+      Buscape 0.308 vs. 0.047) &mdash; precisely the register a Portuguese-specific encoder is best placed to serve.
+      Where the two agree they agree closely (RulingBR 0.075 vs. 0.073, IntentPT 0.114 vs. 0.117). And a <b>trained
+      read-out over a frozen space</b> buys roughly what supervised fine-tuning of the whole encoder does (mean 0.203
+      against 0.219) but does not close the gap to episodic training, failing on exactly the specialist corpora where
+      the centroid read-out fails.</p>
+    </div>
+
+    <h3 class="narrow">Against a prompted 7B LLM &mdash; and against TF-IDF</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Prompted LLM and lexical baseline</h4><div class="sub">Three corpora spanning 2, 10 and 48 classes. <span class="better" id="t13-better"></span></div></div>
+        <div class="controls"><span class="seg-lbl">Metric</span><div class="seg" role="group" aria-label="Metric"><button data-met="t13" data-v="0" aria-pressed="true">AURC</button><button data-met="t13" data-v="1" aria-pressed="false">E-AURC</button><button data-met="t13" data-v="2" aria-pressed="false">Acc</button></div><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t13" aria-pressed="true">Chart</button><button data-view="table" data-target="t13" aria-pressed="false">Table</button></div></div>
+      </div>
+      <div class="legend" id="t13-legend"></div>
+      <div class="panel-body" id="t13-chart"><div class="chart" id="t13-plot"></div></div>
+      <div class="panel-body hide" id="t13-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 13.</b> A lexical baseline (TF-IDF + logistic regression on the same <var>K</var> examples)
+        and prompted Qwen2.5-7B-Instruct against our pipeline and the swept MSP baseline, 5-shot, means over 5 folds.
+        The LLM reads a categorical distribution from answer-token logits under the same folds, support sets and
+        calibration split.</caption>
+        <thead><tr><th>Corpus</th><th>Method</th><th>AURC &darr;</th><th>E-AURC &darr;</th><th>Acc &uarr;</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="4">B2WReviews<br><span style="color:var(--ink-3);font-weight:400;font-size:.9em">2 classes</span></td><td>TF-IDF</td><td>0.105</td><td>0.079</td><td>0.781</td></tr>
+          <tr><td>MSP</td><td>0.048</td><td>0.036</td><td>0.855</td></tr>
+          <tr><td>Qwen2.5-7B</td><td>0.011</td><td>0.011</td><td class="win">0.973</td></tr>
+          <tr><td>Ours</td><td class="win">0.004</td><td class="win">0.003</td><td>0.971</td></tr>
+          <tr class="sep"><td rowspan="4">RulingBR<br><span style="color:var(--ink-3);font-weight:400;font-size:.9em">10 classes</span></td><td>TF-IDF</td><td>0.648</td><td>0.310</td><td>0.388</td></tr>
+          <tr><td>MSP</td><td>0.450</td><td>0.195</td><td>0.495</td></tr>
+          <tr><td>Qwen2.5-7B</td><td>0.192</td><td>0.078</td><td>0.735</td></tr>
+          <tr><td>Ours</td><td class="win">0.073</td><td class="win">0.022</td><td class="win">0.944</td></tr>
+          <tr class="sep"><td rowspan="4">IntentPT<br><span style="color:var(--ink-3);font-weight:400;font-size:.9em">48 classes</span></td><td>TF-IDF</td><td>0.415</td><td>0.145</td><td>0.457</td></tr>
+          <tr><td>Qwen2.5-7B</td><td>0.385</td><td>0.154</td><td>0.512</td></tr>
+          <tr><td>MSP</td><td>0.282</td><td>0.117</td><td>0.607</td></tr>
+          <tr><td>Ours</td><td class="win">0.117</td><td class="win">0.057</td><td class="win">0.849</td></tr>
+        </tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+    <div class="narrow">
+      <p>Three things follow. The premise we were prepared to assume is <b>false</b>: answer-token logits do give a
+      usable selective signal, and on B2WReviews the LLM reaches attainable coverage 1.00 at 5% risk against MSP's 0.59.
+      That corpus isolates the central claim more cleanly than any of our own ablations &mdash; the LLM is <em>more</em>
+      accurate there and still worse at AURC, so our entire advantage is in error <b>ranking</b>. Second, that
+      competitiveness decays with label granularity until, on a 48-intent taxonomy, it falls below the fine-tuned
+      baseline; both gaps survive E-AURC. Third, the cost asymmetry does not narrow: 2,756&thinsp;&plusmn;&thinsp;537
+      seconds of H100 time per RulingBR fold, because every input needs attention over the whole support set in
+      context.</p>
+      <p>A fourth corpus separates two distinct failures. On MMLU-PT-BR (45 classes) the LLM's ID accuracy collapses to
+      0.089 &mdash; yet its E-AURC, which discounts accuracy, is 0.106, essentially MSP's 0.094. The confidence is still
+      rankable; what the model cannot do is recover a labelling convention (subjects separated by education level) that
+      our pipeline infers from the same five examples per class.</p>
+    </div>
+
+    <h3 class="narrow">Score variants and calibration</h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Confidence-score variants over the same representation</h4><div class="sub">Averaged across the twelve corpora at 5-shot. <span class="better" id="t14-better"></span></div></div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t14" aria-pressed="true">Chart</button><button data-view="table" data-target="t14" aria-pressed="false">Table</button></div></div>
+      </div>
+      
+      <div class="panel-body" id="t14-chart"><div class="chart" id="t14-plot"></div></div>
+      <div class="panel-body hide" id="t14-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 14.</b> Mean AURC and mean gain over MSP for each confidence-score variant over the same
+        prototypical representation, averaged across the twelve corpora at 5-shot. No variant is universally superior,
+        so the main tables report the base cosine score rather than the per-corpus best &mdash; which would amount to
+        selecting on the test set.</caption>
+        <thead><tr><th>Score</th><th>AURC &darr;</th><th>Gain vs. MSP &uarr;</th></tr></thead>
+        <tbody>
+          <tr><td>Margin</td><td class="win">0.072</td><td class="win">+0.147</td></tr>
+          <tr><td>TempScale</td><td>0.072</td><td>+0.147</td></tr>
+          <tr><td>MC Dropout</td><td>0.073</td><td>+0.146</td></tr>
+          <tr><td>Cosine <span style="color:var(--ink-3);font-weight:400">(reported)</span></td><td>0.074</td><td>+0.145</td></tr>
+          <tr><td>X-Mahalanobis</td><td>0.083</td><td>+0.136</td></tr>
+        </tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+    <div class="narrow">
+      <p>The narrow spread is the <a href="#attribution">attribution</a> seen from another angle: once the space is
+      structured, the choice of score is close to immaterial. The gains are in <b>ranking, not calibration</b> &mdash;
+      the cosine score is not a probability and its ECE is poor (0.316 on B2WReviews against 0.038 for MSP). Temperature
+      scaling of the same similarities recovers calibration and even improves on MSP there (0.010), though not uniformly
+      (0.115 on IntentPT against 0.046). Prefer TempScale when calibrated probabilities are needed downstream.</p>
+    </div>
+
+    <h3 class="narrow">Calibration set size <var>m</var></h3>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h4>Calibration set size m, log scale</h4><div class="sub">Dashed lines mark the feasibility bounds: m &ge; 46 at 10% risk, m &ge; 97 at 5%. <span class="better" id="t15-better"></span></div></div>
+        <div class="controls"><div class="seg" role="group" aria-label="View"><button data-view="chart" data-target="t15" aria-pressed="true">Chart</button><button data-view="table" data-target="t15" aria-pressed="false">Table</button></div></div>
+      </div>
+      
+      <div class="panel-body" id="t15-chart"><div class="chart" id="t15-plot"></div></div>
+      <div class="panel-body hide" id="t15-table">
+        <div class="tbl-wrap">
+      <table>
+        <caption><b>Table 15.</b> Threshold-selection set size, fold 01. The twelve-corpus comparison runs select the
+        threshold on the ID test split; the certified runs use the ID validation split. <var>m</var> spans three orders
+        of magnitude. Feasibility with zero observed errors requires <var>m</var>&thinsp;&ge;&thinsp;46 at
+        <var>r</var>*&thinsp;=&thinsp;10% and <var>m</var>&thinsp;&ge;&thinsp;97 at 5%.</caption>
+        <thead><tr><th>Corpus</th><th>ID valid.</th><th><var>m</var> (ID test)</th><th>Certified cov @5%, subsampled 5% &rarr; 100%</th></tr></thead>
+        <tbody id="m-tbody"></tbody>
+      </table>
+      <p class="foot-note">The last column is the coverage-versus-<var>m</var> sweep at fixed representation and score,
+      mean of five draws per fraction. If the collapse were a sample-size artefact each row would rise from left to
+      right; only B2WReviews does. Dashes mark corpora not included in the sweep.</p>
+    </div>
+      </div>
+    </div>
+
+    <div class="note narrow warn">
+      <h4>Scope &mdash; what these numbers do not establish</h4>
+      <p><b>Only the certified runs carry the guarantee.</b> Every attainable-coverage figure selects the threshold on
+      the evaluation split and is an upper bound on what SGR could certify over that same population. The two are not
+      comparable term by term and neither bounds the other, since they are measured over different populations.</p>
+      <p>The OOD protocol is class holdout, which produces <em>near</em>-OOD by construction and covers neither far-OOD
+      nor temporal or adversarial drift. All runs use a single seed (42), so the standard deviations measure sensitivity
+      to the data partition and not to initialisation. The detailed grid covers four corpora, though the ladder it
+      summarises is measured on all twelve, and its CE-encoder prototypes are built from validation examples rather than
+      the training support. The prompted-LLM comparison covers one model size and one elicitation protocol; the LLM has
+      very likely seen these public corpora in pretraining, a confound that favours it. Both base-sized encoders are
+      BERT-family, and whether the gains persist with larger encoders remains open.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== REPRODUCE ============================== -->
+<section id="repro">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Reproducibility</div>
+      <h2>Running the framework</h2>
+      <p class="lede">Source code, the split configuration (<code>ood_splits.json</code>), the benchmark scripts and the
+      per-fold results underlying every table are in the repository. Hyperparameters are fixed reference defaults, held
+      constant across all twelve corpora and three budgets &mdash; the baselines, not our pipeline, receive the oracle
+      sweeps.</p>
+    </div>
+
+    <div class="steps narrow">
+      <div class="step">
+        <div class="num">1</div>
+        <div>
+          <h4>Environment</h4>
+          <p><code>uv</code> for a native install (recommended on cluster / DGX), or Docker with GPU support.</p>
+          <div class="rel"><button class="copy">Copy</button><pre>make setup-env
+source .venv/bin/activate
+<span class="c"># or: make laqda-install &amp;&amp; docker compose up laqda</span></pre></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div>
+          <h4>Deterministic ID / OOD splits</h4>
+          <p>Generates <code>configs/ood_splits.json</code>, mapping every corpus and fold. The ID/OOD split is
+          resampled per fold, so the five folds capture the variance of <em>which</em> classes are held out.</p>
+          <div class="rel"><button class="copy">Copy</button><pre>python main.py</pre></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div>
+          <h4>Train &mdash; prototypical encoder with SGR</h4>
+          <p>Without <code>--use_sgr</code> the model runs at 100% coverage. With it, a critical threshold
+          <var>&theta;</var>* is estimated and stored, and the model abstains below it.</p>
+          <div class="rel"><button class="copy">Copy</button><pre>python -m methods.laqda.cli.train \
+    --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
+    --fold 01 --kshot 5 \
+    --save_dir outputs/laqda_sgr/IntentPTCorpus/fold_01 \
+    --use_sgr</pre></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div>
+          <h4>Baselines under an identical encoder</h4>
+          <p>One run benchmarks all seven post-hoc scores &mdash; MSP, Energy, Mahalanobis, <var>k</var>NN, GradNorm,
+          ReAct, ConjNorm &mdash; on the same fine-tuned encoder.</p>
+          <div class="rel"><button class="copy">Copy</button><pre>python -m methods.baselines.cli.train_baseline \
+    --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
+    --fold 01 --kshot 5 \
+    --save_dir outputs/baseline/IntentPTCorpus/fold_01</pre></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">5</div>
+        <div>
+          <h4>Full benchmark and consolidation</h4>
+          <p>SLURM scripts submit every algorithm across folds 01&ndash;05 and budgets
+          <var>K</var>&thinsp;&isin;&thinsp;{1,&thinsp;5,&thinsp;10}; <code>compare.py</code> aggregates cross-fold
+          means &plusmn; standard deviations and plots the reports.</p>
+          <div class="rel"><button class="copy">Copy</button><pre>bash scripts/run_all_pt.sh          <span class="c"># submit the grid</span>
+python scripts/compare.py --corpus RulingBRCorpus --plot
+make test-baselines                 <span class="c"># scorer unit tests</span></pre></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="narrow">Repository layout</h3>
+    <div class="narrow">
+      <div class="plate" style="padding:1.1rem 1.3rem">
+        <div class="tree">
+<b>configs/</b>    &nbsp;model, method and OOD-split configuration<br>
+<b>data/</b>       &nbsp;datamodules and <span style="color:var(--ink-3)">k</span>-shot episodic samplers<br>
+<b>methods/</b><br>
+&nbsp;&nbsp;<b>laqda/</b>   &nbsp;label-aware encoder, QDA sampler, contrastive loss, train/infer CLI<br>
+&nbsp;&nbsp;<b>baselines/</b> &nbsp;MSP, Energy · <span style="color:var(--ink-3)">distance/</span> Mahalanobis, kNN · <span style="color:var(--ink-3)">sota/</span> GradNorm, ReAct, ConjNorm<br>
+&nbsp;&nbsp;<b>sgr/</b>     &nbsp;binomial-inversion risk control and post-hoc thresholding<br>
+&nbsp;&nbsp;<b>metrics/</b> &nbsp;Acc, F1, ECE, AUROC, FPR@95, AUPR, AURC, E-AURC<br>
+<b>scripts/</b>    &nbsp;SLURM submission, aggregation, ablation and paper checks<br>
+<b>tests/</b>      &nbsp;mathematical and integrity tests for every scorer
+        </div>
+      </div>
+    </div>
+
+    <h3 class="narrow">Fixed configuration</h3>
+    <div class="tbl-wrap narrow">
+      <table>
+        <caption><b>Table 16.</b> Reference defaults, deliberately not tuned per corpus.</caption>
+        <thead><tr><th>Component</th><th style="text-align:left">Setting</th></tr></thead>
+        <tbody>
+          <tr><td>Encoder</td><td style="text-align:left">BERTimbau base cased (pt) / bert-base-uncased (en), first 6 layers frozen</td></tr>
+          <tr><td>Optimisation</td><td style="text-align:left">AdamW, lr 2×10⁻⁵, weight decay 10⁻³, ≤100 epochs, early stopping (patience 7)</td></tr>
+          <tr><td>Episodes</td><td style="text-align:left">100 per epoch; <var>K</var>∈{1,5,10} support, ≤25 query per class</td></tr>
+          <tr><td>Adapter</td><td style="text-align:left"><var>ρ</var>=15, <var>τ</var><sub>tr</sub>=20, <var>τ</var>=15, <var>t</var>=5 — all found dispensable</td></tr>
+          <tr><td>SGR</td><td style="text-align:left"><var>δ</var>=0.05, <var>r</var>*∈{0.05, 0.10}, binary search over calibration quantiles</td></tr>
+          <tr><td>Protocol</td><td style="text-align:left">5 folds, single seed (42); ≈40% of classes held out as OOD on multiclass corpora (≈20% of test instances)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CITE ============================== -->
+<section id="cite">
+  <div class="wrap narrow">
+    <div class="kicker">Citation</div>
+    <h2>BibTeX</h2>
+    <p>The entry below is a placeholder for the anonymised submission; it will be replaced by the published reference on
+    acceptance.</p>
+    <div class="rel">
+      <button class="copy">Copy</button>
+      <pre id="bib">@inproceedings{selective_risk_ptbr,
+  title     = {Selective Classification in Few-Shot Text:
+               Prototypical Geometry Dominates Confidence Scores},
+  author    = {Anonymous},
+  booktitle = {Under review},
+  year      = {2026},
+  note      = {Code: https://github.com/beatrizalmeidaf/selective-risk-framework}
+}</pre>
+    </div>
+
+    <h3>Building blocks we adopt</h3>
+    <p style="font-size:.9rem;color:var(--ink-2)">
+      <b>SGR</b> &mdash; Geifman &amp; El-Yaniv, <em>Selective Classification for Deep Neural Networks</em>, NeurIPS 2017.<br>
+      <b>CRC / Learn-then-Test</b> &mdash; Angelopoulos et al., conformal risk control.<br>
+      <b>LAQDA</b> &mdash; Liu et al., 2024. &nbsp;<b>SetFit</b> &mdash; Tunstall et al., 2022.
+      &nbsp;<b>Prototypical Networks</b> &mdash; Snell et al., NeurIPS 2017.<br>
+      <b>BERTimbau</b> &mdash; Souza et al., BRACIS 2020. &nbsp;<b>XLM-R</b> &mdash; Conneau et al., ACL 2020.<br>
+      <b>MSP</b> &mdash; Hendrycks &amp; Gimpel, ICLR 2017. &nbsp;<b>Energy</b> &mdash; Liu et al., NeurIPS 2020.
+      &nbsp;<b>kNN</b> &mdash; Sun et al., ICML 2022.
+    </p>
+
+    <div class="note">
+      <h4>Ethical considerations</h4>
+      <p>Selective classification acts as a safety mechanism, but a stated target risk may induce automation bias: the
+      guarantee is strictly conditioned on i.i.d. ID calibration data and offers no cover against distribution shift
+      among accepted predictions &mdash; on our own certified runs, a 5% ID guarantee yields 15.2% realised error once
+      unseen classes enter the stream. Abstention also raises fairness implications: if particular demographic or
+      dialectal groups are under-represented in the support set, their inputs may be disproportionately rejected. We
+      recommend auditing coverage stratified by subpopulation before any deployment. All datasets used are publicly
+      available; the hate-speech corpora contain inherently offensive language, handled here exclusively for research
+      aimed at improving moderation systems.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-grid">
+    <div>Project page for <em>Selective Classification in Few-Shot Portuguese Text</em>. Numbers on this page are
+    transcribed from the paper source; the repository holds the per-fold results behind every table.</div>
+    <div><a href="https://github.com/beatrizalmeidaf/selective-risk-framework">GitHub repository</a></div>
+  </div>
+</footer>
+
+<script>
+var L = {
+  ablFull: "Full (adapter + QDA)",
+  ablNoLab: "w/o label encoder",
+  ablNoQda: "w/o QDA sampler",
+  ablProto: "Plain prototypical",
+  annotRuling: "−84% vs. MSP",
+  ariaK: "AURC versus shot budget on ",
+  axAcc: "ID accuracy ↑",
+  axAurc: "AURC ↓ (0 = perfect ranking at zero error)",
+  axAuroc: "Correct-vs-incorrect AUROC ↑",
+  axAurocOod: "ID/OOD AUROC ↑",
+  axCov: "Coverage ↑ (fraction answered rather than deferred)",
+  axCovCert: "Certified ID coverage ↑",
+  axEaurc: "E-AURC ↓ (ranking quality, accuracy discounted)",
+  axFpr: "FPR@95 ↓",
+  axK: "shot budget K",
+  axLadder: "Absolute gap between the two scores, correct-vs-incorrect AUROC ↓",
+  axM: "m, log scale — dashed lines are the feasibility bounds (46 and 97)",
+  context: "context, not a score",
+  copied: "Copied",
+  en: "English",
+  feas: "feasible folds (ours · MSP)",
+  gNoOod: "No held-out classes · pure selective classification",
+  gOod: "≈20% of test instances from held-out OOD classes",
+  gain: "gain vs. MSP",
+  heatNote: "AURC ↓ · the rightmost column is ours",
+  higher: "↑ higher is better",
+  infeas: "infeasible",
+  lower: "↓ lower is better",
+  mean: "mean",
+  median: "median",
+  n1259: "1,259",
+  n1260: "1,260",
+  n13510: "13,510",
+  n1400: "1,400",
+  n1600: "1,600",
+  n1984: "1,984",
+  n20720: "20,720",
+  n20771: "20,771",
+  n22691: "22,691",
+  n2284: "2,284",
+  n2295: "2,295",
+  n2635: "2,635",
+  n2637: "2,637",
+  n45: "45",
+  n46: "46",
+  n557: "557",
+  n580: "580",
+  n6618: "6,618",
+  na: "n/a",
+  ours: "Ours",
+  probe: "Frozen + probe",
+  pt: "Portuguese",
+  rCeLong: "CE fine-tuning",
+  rFrozen: "Frozen",
+  rFrozenLong: "Frozen — no adaptation",
+  rProto: "proto",
+  rProtoLong: "Prototypical — episodic",
+  rSetfitLong: "SetFit — contrastive",
+  realised: "realised ID risk",
+  svCos: "Cosine (reported)",
+  svMargin: "Margin",
+  sweep0: "0.00 at every fraction",
+  sweepB: "0.25 → 0.32 → 0.46 → 0.48 → 0.51",
+  sweepLbl: "coverage vs. m sweep",
+  whyBrands: "m = 46 · at the feasibility boundary",
+  whyEniac: "OOD mass floors the mixture risk at ≈20%"
+};
+
+function nf(v, d){ return v.toFixed(d); }
+function fmtInt(v){ return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+/* ============================================================
+   Theme
+   ============================================================ */
+(function(){
+  var saved = null;
+  try { saved = localStorage.getItem('theme'); } catch(e){}
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('theme').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme');
+    if (!cur) cur = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    var next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch(e){}
+  });
+})();
+
+/* ============================================================
+   Data — transcribed from the paper tables
+   ============================================================ */
+var CORPUS_GROUPS = [
+  {label:L.gNoOod, from:0, to:7},
+  {label:L.gOod,   from:7, to:12}
+];
+
+/* corpus, %OOD, MSP[aurc,eaurc,acc] (oracle-swept), OURS[aurc,eaurc,acc] */
+var AURC = [
+  ['B2WReviews',   0.0, [0.048,0.036,0.855], [0.004,0.003,0.971]],
+  ['Brands',       0.0, [0.025,0.020,0.912], [0.003,0.003,0.978]],
+  ['Buscape',      0.0, [0.093,0.070,0.803], [0.047,0.037,0.867]],
+  ['Olist',        0.0, [0.062,0.048,0.842], [0.016,0.013,0.923]],
+  ['RePro',        0.0, [0.073,0.054,0.813], [0.008,0.007,0.963]],
+  ['HateBR',       0.0, [0.308,0.218,0.631], [0.024,0.018,0.900]],
+  ['TuPy',         0.0, [0.167,0.134,0.776], [0.068,0.048,0.806]],
+  ['Eniac',       19.9, [0.503,0.238,0.463], [0.255,0.146,0.720]],
+  ['Recognasumm', 20.1, [0.338,0.169,0.604], [0.136,0.070,0.839]],
+  ['IntentPT',    20.0, [0.282,0.117,0.607], [0.117,0.057,0.849]],
+  ['MMLU-PT-BR',  19.7, [0.265,0.094,0.596], [0.134,0.054,0.788]],
+  ['RulingBR',    20.2, [0.450,0.195,0.495], [0.073,0.022,0.944]]
+];
+
+var GRID_COLS = ['MSP','Energy','Mahal.','kNN','GradNorm','ReAct','ConjNorm'];
+var GRID = [
+  ['B2WReviews',   [0.056,0.067,0.091,0.124,0.058,0.070,0.082], 0.004],
+  ['Brands',       [0.030,0.033,0.047,0.087,0.032,0.035,0.058], 0.003],
+  ['Buscape',      [0.147,0.164,0.228,0.277,0.166,0.163,0.250], 0.047],
+  ['Olist',        [0.064,0.072,0.075,0.101,0.068,0.076,0.085], 0.016],
+  ['RePro',        [0.070,0.072,0.106,0.152,0.072,0.074,0.105], 0.008],
+  ['HateBR',       [0.321,0.352,0.328,0.341,0.325,0.354,0.326], 0.024],
+  ['TuPy',         [0.377,0.388,0.393,0.408,0.380,0.389,0.399], 0.068],
+  ['Eniac',        [0.518,0.537,0.604,0.669,0.543,0.537,0.609], 0.255],
+  ['Recognasumm',  [0.347,0.366,0.413,0.537,0.365,0.369,0.412], 0.136],
+  ['IntentPT',     [0.307,0.342,0.363,0.457,0.338,0.346,0.357], 0.117],
+  ['MMLU-PT-BR',   [0.282,0.304,0.341,0.511,0.327,0.308,0.333], 0.134],
+  ['RulingBR',     [0.481,0.497,0.555,0.683,0.494,0.498,0.572], 0.073]
+];
+
+var COV = {
+  'B2WReviews':  {k5r5:[0.59,1.00], k5r10:[0.83,1.00], k10r5:[0.85,1.00], k10r10:[1.00,1.00]},
+  'Brands':      {k5r5:[null,null], k5r10:[null,null], k10r5:[null,null], k10r10:[null,null]},
+  'Buscape':     {k5r5:[0.30,0.66], k5r10:[0.56,0.87], k10r5:[0.18,0.79], k10r10:[0.46,0.94]},
+  'Olist':       {k5r5:[0.34,0.88], k5r10:[0.75,1.00], k10r5:[0.48,0.91], k10r10:[0.81,1.00]},
+  'RePro':       {k5r5:[0.25,1.00], k5r10:[0.54,1.00], k10r5:[0.62,1.00], k10r10:[0.93,1.00]},
+  'HateBR':      {k5r5:[null,0.73], k5r10:[null,0.94], k10r5:[null,0.71], k10r10:[0.07,0.93]},
+  'TuPy':        {k5r5:[null,0.39], k5r10:[null,0.61], k10r5:[null,0.27], k10r10:[null,0.53]},
+  'Eniac':       {k5r5:[null,null], k5r10:[null,null], k10r5:[null,null], k10r10:[null,0.02]},
+  'Recognasumm': {k5r5:[null,0.27], k5r10:[null,0.43], k10r5:[null,0.29], k10r10:[0.01,0.45]},
+  'IntentPT':    {k5r5:[null,0.25], k5r10:[0.04,0.45], k10r5:[null,0.18], k10r10:[0.14,0.43]},
+  'MMLU-PT-BR':  {k5r5:[0.09,0.30], k5r10:[0.19,0.43], k10r5:[0.07,0.28], k10r10:[0.21,0.44]},
+  'RulingBR':    {k5r5:[null,0.54], k5r10:[null,0.72], k10r5:[0.03,0.56], k10r10:[0.40,0.73]}
+};
+
+/* certified: [mspCov5, mspRisk5, oursCov5, oursRisk5, mspCov10, mspRisk10, oursCov10, oursRisk10] */
+var CERT = [
+  ['B2WReviews',  0.586,0.044, 1.000,0.028, 0.822,0.092, 1.000,0.028],
+  ['Brands',      0.000,null,  0.000,null,  0.000,null,  0.000,null ],
+  ['Buscape',     0.304,0.042, 0.421,0.045, 0.577,0.092, 0.814,0.092],
+  ['Eniac',       0.000,null,  0.000,null,  0.000,null,  0.074,0.078],
+  ['HateBR',      0.000,null,  0.703,0.031, 0.030,0.053, 0.927,0.080],
+  ['IntentPT',    0.000,null,  0.631,0.035, 0.237,0.068, 0.860,0.087],
+  ['MMLU-PT-BR',  0.163,0.026, 0.460,0.030, 0.304,0.074, 0.669,0.078],
+  ['Olist',       0.421,0.039, 0.874,0.041, 0.760,0.090, 1.000,0.073],
+  ['RePro',       0.155,0.022, 0.995,0.035, 0.565,0.077, 1.000,0.036],
+  ['Recognasumm', 0.007,0.021, 0.568,0.046, 0.040,0.087, 0.785,0.094],
+  ['RulingBR',    0.000,null,  0.943,0.032, 0.000,null,  0.997,0.055],
+  ['TuPy',        0.000,null,  0.228,0.033, 0.000,null,  0.649,0.081]
+];
+
+/* SetFit comparison: corpus -> [CE, SetFit, ours] at 5% and 10%; null = infeasible */
+var SETFIT = [
+  ['B2WReviews', [0.59,0.40,1.00], [0.82,0.77,1.00]],
+  ['IntentPT',   [null,0.07,0.63], [0.24,0.21,0.86]],
+  ['RulingBR',   [null,0.07,0.94], [null,0.19,1.00]],
+  ['TuPy',       [null,null,0.23], [null,null,0.65]]
+];
+
+var FRW = [
+  ['B2WReviews',  1.000,1.000,1.000, 1.000,1.000,1.000],
+  ['Brands',      0.000,0.000,0.000, 0.000,0.933,0.000],
+  ['Buscape',     0.421,0.542,0.476, 0.814,0.821,0.797],
+  ['Eniac',       0.000,0.000,0.000, 0.074,0.109,0.000],
+  ['HateBR',      0.703,0.720,0.637, 0.927,0.946,0.893],
+  ['IntentPT',    0.631,0.646,0.579, 0.860,0.873,0.840],
+  ['MMLU-PT-BR',  0.460,0.478,0.422, 0.669,0.683,0.642],
+  ['Olist',       0.874,0.883,0.856, 1.000,1.000,1.000],
+  ['RePro',       0.995,0.998,0.986, 1.000,1.000,1.000],
+  ['Recognasumm', 0.568,0.575,0.553, 0.785,0.791,0.773],
+  ['RulingBR',    0.943,0.949,0.922, 0.997,0.999,0.990],
+  ['TuPy',        0.228,0.358,0.198, 0.649,0.674,0.602]
+];
+
+var EN_ORDER = [
+  ['20Newsgroups', 0.358,0.167,53.2, 0.616,0.732],
+  ['AGNews',       0.188,0.075,60.0, 0.735,0.838],
+  ['Reuters',      0.266,0.187,29.8, 0.732,0.793],
+  ['StackOverflow',0.779,0.611,21.6, 0.549,0.614],
+  ['Banking77',    0.219,0.079,63.8, 0.724,0.860],
+  ['Clinc150',     0.092,0.043,53.5, 0.842,0.937],
+  ['Snips',        0.119,0.042,64.8, 0.805,0.950],
+  ['SST-2',        0.310,0.028,90.9, null,null]
+];
+
+var ENCERT = [
+  ['20Newsgroups', 0.026,'1/5', 0.365,'5/5'],
+  ['AGNews',       0.346,'5/5', 0.947,'5/5'],
+  ['Reuters',      0.060,'1/5', 0.000,'0/5'],
+  ['StackOverflow',0.000,'0/5', 0.000,'0/5'],
+  ['Banking77',    0.125,'3/5', 0.891,'5/5'],
+  ['Clinc150',     0.720,'5/5', 1.000,'5/5'],
+  ['Snips',        0.680,'5/5', 1.000,'5/5'],
+  ['SST-2',        0.000,'0/5', 0.776,'5/5']
+];
+
+/* OOD: [msp auroc, ours auroc, msp fpr, ours fpr] */
+var OOD = [
+  ['Eniac',       0.553,0.685, 0.928,0.803],
+  ['Recognasumm', 0.657,0.770, 0.864,0.794],
+  ['IntentPT',    0.679,0.797, 0.871,0.771],
+  ['MMLU-PT-BR',  0.702,0.804, 0.861,0.787],
+  ['RulingBR',    0.555,0.893, 0.931,0.472]
+];
+
+/* ablation: config -> [[mean,std] x 3 budgets] */
+var ABL = [
+  [L.ablFull,  [[.138,.020],[.117,.027],[.113,.026]]],
+  [L.ablNoQda, [[.134,.017],[.105,.023],[.103,.021]]],
+  [L.ablNoLab, [[.139,.015],[.119,.026],[.113,.024]]],
+  [L.ablProto, [[.131,.018],[.107,.024],[.106,.024]]]
+];
+
+var ALT = [
+  ['B2WReviews',  0.048,0.004,0.008,0.017],
+  ['Brands',      0.025,0.003,0.017,0.004],
+  ['Buscape',     0.093,0.047,0.308,0.151],
+  ['Eniac',       0.503,0.255,0.433,0.461],
+  ['HateBR',      0.308,0.024,0.306,0.183],
+  ['IntentPT',    0.282,0.117,0.114,0.212],
+  ['MMLU-PT-BR',  0.265,0.134,0.142,0.305],
+  ['Olist',       0.062,0.016,0.229,0.036],
+  ['RePro',       0.087,0.008,0.015,0.012],
+  ['Recognasumm', 0.338,0.136,0.137,0.369],
+  ['RulingBR',    0.450,0.073,0.075,0.464],
+  ['TuPy',        0.167,0.068,0.550,0.219]
+];
+
+/* LLM: corpus -> method x [aurc, eaurc, acc] ; methods TF-IDF, MSP, Qwen, ours */
+var LLM = [
+  ['B2WReviews', [[0.105,0.079,0.781],[0.048,0.036,0.855],[0.011,0.011,0.973],[0.004,0.003,0.971]]],
+  ['RulingBR',   [[0.648,0.310,0.388],[0.450,0.195,0.495],[0.192,0.078,0.735],[0.073,0.022,0.944]]],
+  ['IntentPT',   [[0.415,0.145,0.457],[0.282,0.117,0.607],[0.385,0.154,0.512],[0.117,0.057,0.849]]]
+];
+
+var SCOREV = [
+  [L.svMargin, 0.072, 0.147],
+  ['TempScale', 0.072, 0.147],
+  ['MC Dropout', 0.073, 0.146],
+  [L.svCos,     0.074, 0.145],
+  ['X-Mahalanobis', 0.083, 0.136]
+];
+
+/* 4x2 attribution grid: repr -> [MSP per corpus], [cos per corpus] */
+var ATTR_CORPORA = ['B2WReviews','IntentPT','RulingBR','TuPy'];
+var ATTR_REPR = [L.rFrozen, 'CE', 'SetFit', L.rProto];
+var ATTR = {
+  aurc: [ [[0.014,0.217,0.498,0.229],[0.017,0.260,0.566,0.322]],
+          [[0.048,0.283,0.450,0.167],[0.064,0.293,0.518,0.343]],
+          [[0.040,0.272,0.347,0.294],[0.028,0.268,0.354,0.413]],
+          [[0.004,0.115,0.072,0.068],[0.004,0.117,0.073,0.066]] ],
+  auroc:[ [[0.848,0.829,0.688,0.651],[0.787,0.739,0.561,0.512]],
+          [[0.811,0.806,0.704,0.600],[0.691,0.776,0.619,0.598]],
+          [[0.819,0.826,0.751,0.620],[0.844,0.828,0.737,0.538]],
+          [[0.898,0.876,0.936,0.781],[0.917,0.863,0.929,0.779]] ]
+};
+
+var KSHOT = [
+  {name:'RePro',      max:0.60, msp:[[.248,.066],[.229,.318],[.032,.014]], ours:[[.017,.006],[.008,.002],[.007,.003]]},
+  {name:'B2WReviews', max:0.35, msp:[[.233,.073],[.056,.021],[.022,.004]], ours:[[.020,.011],[.004,.001],[.004,.001]]},
+  {name:'RulingBR',   max:0.90, msp:[[.775,.081],[.481,.113],[.156,.091]], ours:[[.099,.097],[.073,.069],[.072,.070]]}
+];
+
+var LADDER = [
+  [L.rFrozenLong, 0.107, 0.110],
+  [L.rCeLong,     0.099, 0.078],
+  [L.rSetfitLong, 0.056, 0.020],
+  [L.rProtoLong,  0.014, 0.014]
+];
+
+/* corpus, m(valid), m(test), sweep string, m numeric for the log plot */
+var MROWS = [
+  ['Brands',       L.n45,    L.n46,    L.sweep0, 46],
+  ['Eniac',        L.n580,   L.n557,   L.sweep0, 557],
+  ['RulingBR',     L.n1259,  L.n1260,  L.sweep0, 1260],
+  ['HateBR',       L.n1400,  L.n1400,  L.sweep0, 1400],
+  ['RePro',        L.n1600,  L.n1600,  '—',      1600],
+  ['TuPy',         L.n1984,  L.n1984,  L.sweep0, 1984],
+  ['MMLU-PT-BR',   L.n2284,  L.n2295,  '—',      2295],
+  ['IntentPT',     L.n2635,  L.n2637,  L.sweep0, 2637],
+  ['Olist',        L.n6618,  L.n6618,  '—',      6618],
+  ['Buscape',      L.n13510, L.n13510, '—',      13510],
+  ['Recognasumm',  L.n20720, L.n20771, L.sweep0, 20771],
+  ['B2WReviews',   L.n22691, L.n22691, L.sweepB, 22691]
+];
+
+/* ============================================================
+   Formatting
+   ============================================================ */
+function fmt3(v){ return v === null ? L.na : nf(v,3); }
+function fmt2(v){ return v === null ? '≈0' : nf(v,2); }
+function fmtD(v){ return v === null ? '—' : nf(v,3); }
+function fmtP(v){ return v === null ? '—' : nf(v,1) + '%'; }
+
+/* ============================================================
+   Engine — grouped horizontal bars
+   ============================================================ */
+function bars(el, opt){
+  el.innerHTML = '';
+  if (opt.labWidth) el.style.gridTemplateColumns = 'minmax(96px,' + opt.labWidth + 'px) 1fr';
+  var max = opt.max, ticks = opt.ticks, ser = opt.series;
+  var groups = opt.groups || [{label:null, from:0, to:opt.rows.length}];
+
+  groups.forEach(function(g){
+    if (g.label){
+      var h = document.createElement('div');
+      h.className = 'grp-lbl'; h.textContent = g.label;
+      el.appendChild(h);
+    }
+    for (var i = g.from; i < g.to; i++){
+      var d = opt.rows[i];
+      var lab = document.createElement('div');
+      lab.className = 'row-lab'; lab.textContent = d.name; lab.title = d.name;
+
+      var plot = document.createElement('div');
+      plot.className = 'row-plot';
+      var gl = document.createElement('div');
+      gl.className = 'gridlines';
+      ticks.forEach(function(t){
+        if (t === 0 && !opt.scale) return;
+        var s = document.createElement('i');
+        s.style.left = (100 * (opt.scale ? opt.scale(t) : t / max)) + '%';
+        gl.appendChild(s);
+      });
+      (opt.refs || []).forEach(function(r){
+        var s = document.createElement('i');
+        s.className = 'refline';
+        s.style.left = (100 * (opt.scale ? opt.scale(r) : r / max)) + '%';
+        gl.appendChild(s);
+      });
+      plot.appendChild(gl);
+
+      ser.forEach(function(sr, k){
+        var lbl = (opt.labelAll || k === (opt.labelIdx === undefined ? 0 : opt.labelIdx)) ? opt.fmt(d.vals[k]) : '';
+        plot.appendChild(barLine(d.vals[k], max, sr.cls, lbl, k === 0 ? d.annot : '',
+                                d.err ? d.err[k] : null, opt.scale));
+      });
+
+      var row = document.createElement('div');
+      row.className = 'row'; row.style.display = 'contents';
+      row.appendChild(lab); row.appendChild(plot);
+      el.appendChild(row);
+      bindTip(plot, lab, d, opt);
+    }
+  });
+
+  var axis = document.createElement('div');
+  axis.className = 'axis';
+  ticks.forEach(function(t){
+    var s = document.createElement('span');
+    s.style.left = (100 * (opt.scale ? opt.scale(t) : t / max)) + '%';
+    s.textContent = opt.tickFmt(t);
+    axis.appendChild(s);
+  });
+  el.appendChild(axis);
+  var at = document.createElement('div');
+  at.className = 'axis-title'; at.textContent = opt.axisTitle;
+  el.appendChild(at);
+}
+
+function barLine(v, max, cls, text, annot, err, scale){
+  var line = document.createElement('div');
+  line.className = 'bar-line';
+  var bar = document.createElement('div');
+  bar.className = 'bar ' + cls;
+  var shown = (v === null ? 0.004 * max : v);
+  var w = scale ? 100 * scale(Math.max(shown, 1e-9)) : 100 * shown / max;
+  bar.style.width = Math.max(0.4, w) + '%';
+  line.appendChild(bar);
+  if (err && v !== null){
+    var lo = Math.max(0, v - err), hi = Math.min(max, v + err);
+    var wk = document.createElement('i');
+    wk.className = 'whisk';
+    wk.style.left = (100 * lo / max) + '%';
+    wk.style.width = (100 * (hi - lo) / max) + '%';
+    line.appendChild(wk);
+  }
+  if (text){
+    var t = document.createElement('span');
+    t.className = 'tip-val'; t.textContent = text;
+    line.appendChild(t);
+  }
+  if (annot){
+    var a = document.createElement('span');
+    a.className = 'annot'; a.textContent = annot;
+    line.appendChild(a);
+  }
+  return line;
+}
+
+var tip = document.createElement('div');
+tip.className = 'tip';
+document.body.appendChild(tip);
+
+function bindTip(plot, lab, d, opt){
+  function show(e){
+    var html = '<b>' + d.name + '</b>';
+    opt.series.forEach(function(sr, k){
+      html += '<div class="r"><span><i style="background:var(--series-' + sr.cls.slice(1) + ')"></i>' +
+              sr.name + '</span><span class="v">' + opt.fmt(d.vals[k]) +
+              (d.err && d.err[k] ? ' ±' + nf(d.err[k],3) : '') + '</span></div>';
+    });
+    if (d.extra) html += '<hr>' + d.extra;
+    tip.innerHTML = html;
+    tip.classList.add('on'); move(e); lab.classList.add('act');
+  }
+  function move(e){
+    var x = (e.touches ? e.touches[0].clientX : e.clientX);
+    var y = (e.touches ? e.touches[0].clientY : e.clientY);
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = (Math.min(x + 14, window.innerWidth - w - 10) + window.scrollX) + 'px';
+    tip.style.top  = (Math.max(8, y - h - 12) + window.scrollY) + 'px';
+  }
+  function hide(){ tip.classList.remove('on'); lab.classList.remove('act'); }
+  plot.addEventListener('pointerenter', show);
+  plot.addEventListener('pointermove', move);
+  plot.addEventListener('pointerleave', hide);
+  plot.addEventListener('touchstart', show, {passive:true});
+  plot.addEventListener('touchend', function(){ setTimeout(hide, 2200); });
+}
+
+/* legend + direction badge --------------------------------- */
+function legend(id, series){
+  var el = document.getElementById(id + '-legend');
+  if (!el) return;
+  el.innerHTML = series.map(function(s){
+    return '<span><i style="background:var(--series-' + s.cls.slice(1) + ')"></i>' + s.name + '</span>';
+  }).join('');
+}
+function badge(id, down){
+  var el = document.getElementById(id + '-better');
+  if (!el) return;
+  el.className = 'better ' + (down ? 'down' : 'up');
+  el.textContent = down ? L.lower : L.higher;
+}
+
+/* heatmap --------------------------------------------------- */
+function heat(el, opt){
+  var vals = [], i, j;
+  for (i = 0; i < opt.vals.length; i++)
+    for (j = 0; j < opt.vals[i].length; j++)
+      if (opt.vals[i][j] !== null) vals.push(opt.vals[i][j]);
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  el.style.gridTemplateColumns = 'minmax(72px,auto) repeat(' + opt.cols.length + ',1fr)';
+  var html = '<div></div>' + opt.cols.map(function(c){ return '<div class="hh">' + c + '</div>'; }).join('');
+  opt.rows.forEach(function(r, ri){
+    html += '<div class="rh">' + r + '</div>';
+    opt.vals[ri].forEach(function(v){
+      if (v === null){ html += '<div class="c na">' + L.na + '</div>'; return; }
+      var step = Math.round(6 * (v - lo) / (hi - lo || 1));
+      html += '<div class="c h' + step + '" title="' + opt.fmt(v) + '">' + opt.fmt(v) + '</div>';
+    });
+  });
+  el.innerHTML = html;
+  var sc = document.createElement('div');
+  sc.className = 'heat-scale';
+  sc.innerHTML = '<span>' + opt.fmt(lo) + '</span>' +
+    [0,1,2,3,4,5,6].map(function(k){ return '<i class="h' + k + '"></i>'; }).join('') +
+    '<span>' + opt.fmt(hi) + '</span><span style="margin-left:.5rem">' + opt.note + '</span>';
+  el.parentNode.appendChild(sc);
+}
+
+/* faceted small bar charts ---------------------------------- */
+function facets(el, opt){
+  el.innerHTML = '';
+  opt.facets.forEach(function(f){
+    var box = document.createElement('div');
+    box.className = 'facet';
+    box.innerHTML = '<div class="ft">' + f.name + '</div>';
+    var c = document.createElement('div');
+    c.className = 'chart';
+    box.appendChild(c);
+    el.appendChild(box);
+    bars(c, {rows:f.rows, series:opt.series, max:f.max, ticks:f.ticks,
+             fmt:opt.fmt, tickFmt:opt.tickFmt, axisTitle:opt.axisTitle, labelAll:true});
+  });
+}
+
+/* k-shot small multiples ------------------------------------ */
+function drawKshot(){
+  var host = document.getElementById('kshot-plot');
+  host.innerHTML = '';
+  var W = 230, H = 155, Lm = 34, R = 8, T = 10, B = 26;
+  KSHOT.forEach(function(p){
+    var xs = [0,1,2].map(function(i){ return Lm + (W - Lm - R) * (i / 2); });
+    var y = function(v){ return T + (H - T - B) * (1 - Math.min(Math.max(v,0), p.max) / p.max); };
+    var s = '';
+    [0, p.max/3, 2*p.max/3, p.max].forEach(function(t){
+      s += '<line class="grid" x1="' + Lm + '" y1="' + y(t).toFixed(1) + '" x2="' + (W-R) + '" y2="' + y(t).toFixed(1) + '"/>';
+      s += '<text class="tick" x="' + (Lm-5) + '" y="' + (y(t)+3).toFixed(1) + '" text-anchor="end">' + nf(t,2) + '</text>';
+    });
+    s += '<line class="ax" x1="' + Lm + '" y1="' + T + '" x2="' + Lm + '" y2="' + (H-B) + '"/>';
+    ['1','5','10'].forEach(function(k,i){
+      s += '<text class="tick" x="' + xs[i] + '" y="' + (H-B+14) + '" text-anchor="middle">' + k + '</text>';
+    });
+    s += '<text class="tick" x="' + ((Lm+W-R)/2) + '" y="' + (H-2) + '" text-anchor="middle">' + L.axK + '</text>';
+    [['msp','var(--series-2)'],['ours','var(--series-1)']].forEach(function(sr){
+      var d = p[sr[0]], col = sr[1];
+      d.forEach(function(pt,i){
+        s += '<line class="eb" x1="' + xs[i] + '" y1="' + y(pt[0]-pt[1]).toFixed(1) + '" x2="' + xs[i] + '" y2="' + y(pt[0]+pt[1]).toFixed(1) + '" stroke="' + col + '"/>';
+        s += '<line class="eb" x1="' + (xs[i]-3) + '" y1="' + y(pt[0]+pt[1]).toFixed(1) + '" x2="' + (xs[i]+3) + '" y2="' + y(pt[0]+pt[1]).toFixed(1) + '" stroke="' + col + '"/>';
+        s += '<line class="eb" x1="' + (xs[i]-3) + '" y1="' + y(pt[0]-pt[1]).toFixed(1) + '" x2="' + (xs[i]+3) + '" y2="' + y(pt[0]-pt[1]).toFixed(1) + '" stroke="' + col + '"/>';
+      });
+      s += '<path class="ln" stroke="' + col + '" d="M' + d.map(function(pt,i){ return xs[i] + ' ' + y(pt[0]).toFixed(1); }).join(' L') + '"/>';
+      d.forEach(function(pt,i){
+        s += '<circle class="mk" cx="' + xs[i] + '" cy="' + y(pt[0]).toFixed(1) + '" r="4.5" fill="' + col + '"/>';
+      });
+    });
+    var fig = document.createElement('figure');
+    fig.innerHTML = '<div class="t">' + p.name + '</div><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + L.ariaK + p.name + '">' + s + '</svg>';
+    host.appendChild(fig);
+  });
+  badge('kshot', true);
+}
+
+/* ============================================================
+   Series definitions
+   ============================================================ */
+var S_OURS_MSP = [{name:L.ours, cls:'s1'}, {name:'MSP', cls:'s2'}];
+var S_RULES    = [{name:'SGR', cls:'s1'}, {name:'CRC', cls:'s2'}, {name:'LTT', cls:'s3'}];
+var S_SETFIT   = [{name:'CE + MSP', cls:'s2'}, {name:'SetFit', cls:'s3'}, {name:L.ours, cls:'s1'}];
+var S_ALT      = [{name:'MSP', cls:'s2'}, {name:L.ours, cls:'s1'}, {name:'XLM-R', cls:'s3'}, {name:L.probe, cls:'s4'}];
+var S_LLM      = [{name:'TF-IDF', cls:'s4'}, {name:'MSP', cls:'s2'}, {name:'Qwen2.5-7B', cls:'s3'}, {name:L.ours, cls:'s1'}];
+var S_SCORE    = [{name:'MSP', cls:'s2'}, {name:'cos', cls:'s1'}];
+var S_LADDER   = [{name:L.pt, cls:'s1'}, {name:L.en, cls:'s2'}];
+var S_BUDGET   = [{name:'1-shot', cls:'s3'}, {name:'5-shot', cls:'s1'}, {name:'10-shot', cls:'s2'}];
+var S_M        = [{name:'m', cls:'s1'}];
+var S_ONE      = [{name:'AURC', cls:'s1'}];
+
+var pct = function(t){ return nf(t,2); };
+
+/* ============================================================
+   Draws
+   ============================================================ */
+var aurcMet = 0;
+function drawAurc(){
+  var mi = aurcMet, down = mi < 2;
+  var maxes = [0.6, 0.3, 1], tk = [[0,0.15,0.3,0.45,0.6],[0,0.1,0.2,0.3],[0,0.25,0.5,0.75,1]];
+  bars(document.getElementById('aurc-plot'), {
+    rows: AURC.map(function(r){
+      return {name:r[0], vals:[r[3][mi], r[2][mi]],
+        annot: (mi === 0 && r[0] === 'RulingBR') ? L.annotRuling : '',
+        extra:'<div class="r"><span>%OOD</span><span class="v">' + nf(r[1],1) + '</span></div>'};
+    }),
+    series: S_OURS_MSP, groups: CORPUS_GROUPS, max: maxes[mi], ticks: tk[mi],
+    fmt: fmt3, tickFmt: pct, axisTitle: [L.axAurc, L.axEaurc, L.axAcc][mi]
+  });
+  legend('aurc', S_OURS_MSP); badge('aurc', down);
+}
+
+function drawGrid(){
+  heat(document.getElementById('t2-plot'), {
+    rows: GRID.map(function(r){ return r[0]; }),
+    cols: GRID_COLS.concat([L.ours]),
+    vals: GRID.map(function(r){ return r[1].concat([r[2]]); }),
+    fmt: fmt3, note: L.heatNote
+  });
+  badge('t2', true);
+}
+
+var covK = 5, covR = 5;
+function drawCov(){
+  var key = 'k' + covK + 'r' + covR;
+  bars(document.getElementById('cov-plot'), {
+    rows: AURC.map(function(r){
+      var c = COV[r[0]][key];
+      return {name:r[0], vals:[c[1], c[0]],
+        annot: r[0] === 'Brands' ? L.whyBrands : (r[0] === 'Eniac' ? L.whyEniac : '')};
+    }),
+    series: S_OURS_MSP, groups: CORPUS_GROUPS, max: 1, ticks: [0,0.25,0.5,0.75,1],
+    fmt: fmt2, tickFmt: pct, axisTitle: L.axCov
+  });
+  badge('cov', false);
+}
+
+var certR = 5;
+function drawCert(){
+  var o = certR === 5 ? [3,1] : [7,5];
+  bars(document.getElementById('t5-plot'), {
+    rows: CERT.map(function(r){
+      return {name:r[0], vals:[r[o[0]], r[o[1]]],
+        extra:'<div class="r"><span>' + L.realised + '</span><span class="v">' +
+              fmtD(r[o[0]+1]) + '</span></div>'};
+    }),
+    series: S_OURS_MSP, max: 1, ticks: [0,0.25,0.5,0.75,1],
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, axisTitle: L.axCovCert
+  });
+  legend('t5', S_OURS_MSP); badge('t5', false);
+}
+
+var sfR = 5;
+function drawSetfit(){
+  var idx = sfR === 5 ? 1 : 2;
+  bars(document.getElementById('t6-plot'), {
+    rows: SETFIT.map(function(r){ return {name:r[0], vals:[r[idx][0], r[idx][1], r[idx][2]]}; }),
+    series: S_SETFIT, max: 1, ticks: [0,0.25,0.5,0.75,1],
+    fmt: function(v){ return v === null ? L.infeas : nf(v,2); }, tickFmt: pct,
+    labelAll: true, axisTitle: L.axCovCert
+  });
+  legend('t6', S_SETFIT); badge('t6', false);
+}
+
+var frwR = 5;
+function drawFrw(){
+  var o = frwR === 5 ? 1 : 4;
+  bars(document.getElementById('t7-plot'), {
+    rows: FRW.map(function(r){ return {name:r[0], vals:[r[o], r[o+1], r[o+2]]}; }),
+    series: S_RULES, max: 1, ticks: [0,0.25,0.5,0.75,1],
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, axisTitle: L.axCovCert
+  });
+  legend('t7', S_RULES); badge('t7', false);
+}
+
+var enMet = 0;
+function drawEn(){
+  var mi = enMet;
+  bars(document.getElementById('t8-plot'), {
+    rows: EN_ORDER.map(function(r){
+      return {name:r[0], vals: mi === 0 ? [r[2], r[1]] : [r[5], r[4]],
+        annot: mi === 0 ? '−' + nf(r[3],1) + '%' : ''};
+    }),
+    series: [{name:L.ours, cls:'s1'}, {name:'CE', cls:'s2'}],
+    max: mi === 0 ? 0.8 : 1, ticks: mi === 0 ? [0,0.2,0.4,0.6,0.8] : [0,0.25,0.5,0.75,1],
+    fmt: function(v){ return v === null ? '—' : nf(v,3); }, tickFmt: pct,
+    axisTitle: mi === 0 ? L.axAurc : L.axAuroc
+  });
+  legend('t8', [{name:L.ours, cls:'s1'}, {name:'CE', cls:'s2'}]); badge('t8', mi === 0);
+}
+
+function drawEncert(){
+  bars(document.getElementById('t9-plot'), {
+    rows: ENCERT.map(function(r){
+      return {name:r[0], vals:[r[3], r[1]],
+        extra:'<div class="r"><span>' + L.feas + '</span><span class="v">' + r[4] + ' · ' + r[2] + '</span></div>'};
+    }),
+    series: S_OURS_MSP, max: 1, ticks: [0,0.25,0.5,0.75,1],
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, axisTitle: L.axCovCert
+  });
+  legend('t9', S_OURS_MSP); badge('t9', false);
+}
+
+var oodMet = 0;
+function drawOod(){
+  var mi = oodMet;
+  bars(document.getElementById('t10-plot'), {
+    rows: OOD.map(function(r){ return {name:r[0], vals: mi === 0 ? [r[2], r[1]] : [r[4], r[3]]}; }),
+    series: S_OURS_MSP, max: 1, ticks: [0,0.25,0.5,0.75,1],
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, labelAll: true,
+    axisTitle: mi === 0 ? L.axAurocOod : L.axFpr
+  });
+  legend('t10', S_OURS_MSP); badge('t10', mi === 1);
+}
+
+function drawAbl(){
+  bars(document.getElementById('t11-plot'), {
+    rows: ABL.map(function(r){
+      return {name:r[0], vals:[r[1][0][0], r[1][1][0], r[1][2][0]],
+              err:[r[1][0][1], r[1][1][1], r[1][2][1]]};
+    }),
+    series: S_BUDGET, max: 0.18, ticks: [0,0.06,0.12,0.18], labWidth: 190,
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, labelAll: true, axisTitle: L.axAurc
+  });
+  legend('t11', S_BUDGET); badge('t11', true);
+}
+
+function drawAlt(){
+  bars(document.getElementById('t12-plot'), {
+    rows: ALT.map(function(r){ return {name:r[0], vals:[r[1], r[2], r[3], r[4]]}; }),
+    series: S_ALT, max: 0.6, ticks: [0,0.15,0.3,0.45,0.6],
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, labelIdx: 1, axisTitle: L.axAurc
+  });
+  legend('t12', S_ALT); badge('t12', true);
+}
+
+var llmMet = 0;
+function drawLlm(){
+  var mi = llmMet, down = mi < 2;
+  bars(document.getElementById('t13-plot'), {
+    rows: LLM.map(function(r){
+      return {name:r[0], vals:[r[1][0][mi], r[1][1][mi], r[1][2][mi], r[1][3][mi]]};
+    }),
+    series: S_LLM, max: mi === 2 ? 1 : 0.7,
+    ticks: mi === 2 ? [0,0.25,0.5,0.75,1] : [0,0.175,0.35,0.525,0.7],
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, labelAll: true,
+    axisTitle: [L.axAurc, L.axEaurc, L.axAcc][mi]
+  });
+  legend('t13', S_LLM); badge('t13', down);
+}
+
+function drawScorev(){
+  bars(document.getElementById('t14-plot'), {
+    rows: SCOREV.map(function(r){
+      return {name:r[0], vals:[r[1]],
+        extra:'<div class="r"><span>' + L.gain + '</span><span class="v">+' + nf(r[2],3) + '</span></div>'};
+    }),
+    series: S_ONE, max: 0.12, ticks: [0,0.03,0.06,0.09,0.12], labWidth: 170,
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, axisTitle: L.axAurc
+  });
+  badge('t14', true);
+}
+
+function drawM(){
+  var lo = Math.log(10), hi = Math.log(100000);
+  var sc = function(v){ return (Math.log(Math.max(v,10)) - lo) / (hi - lo); };
+  bars(document.getElementById('t15-plot'), {
+    rows: MROWS.map(function(r){
+      return {name:r[0], vals:[r[4]],
+        extra:'<div class="r"><span>' + L.sweepLbl + '</span><span class="v">' + r[3] + '</span></div>'};
+    }),
+    series: S_M, max: 100000, ticks: [10,100,1000,10000,100000], refs: [46, 97], scale: sc, labWidth: 140,
+    fmt: fmtInt, tickFmt: fmtInt, axisTitle: L.axM
+  });
+  badge('t15', false);
+  var b = document.getElementById('t15-better');
+  if (b){ b.className = 'better'; b.textContent = L.context; }
+}
+
+function drawLadder(){
+  bars(document.getElementById('ladder-plot'), {
+    rows: LADDER.map(function(r){ return {name:r[0], vals:[r[1], r[2]]}; }),
+    series: S_LADDER, max: 0.12, ticks: [0,0.03,0.06,0.09,0.12], labWidth: 210,
+    fmt: function(v){ return nf(v,3); }, tickFmt: pct, labelAll: true, axisTitle: L.axLadder
+  });
+  badge('ladder', true);
+}
+
+var attrMet = 0;
+function drawAttr(){
+  var key = attrMet === 0 ? 'aurc' : 'auroc', A = ATTR[key];
+  var maxes = ATTR_CORPORA.map(function(_, ci){
+    if (attrMet === 1) return 1;
+    var m = 0;
+    A.forEach(function(rep){ m = Math.max(m, rep[0][ci], rep[1][ci]); });
+    return Math.ceil(m * 10) / 10 || 0.1;
+  });
+  facets(document.getElementById('t4-plot'), {
+    facets: ATTR_CORPORA.map(function(c, ci){
+      return {
+        name: c, max: maxes[ci],
+        ticks: [0, maxes[ci]/2, maxes[ci]],
+        rows: ATTR_REPR.map(function(rp, ri){
+          return {name: rp, vals:[A[ri][0][ci], A[ri][1][ci]]};
+        })
+      };
+    }),
+    series: S_SCORE, fmt: function(v){ return nf(v,3); }, tickFmt: pct,
+    axisTitle: attrMet === 0 ? L.axAurc : L.axAuroc
+  });
+  legend('t4', S_SCORE); badge('t4', attrMet === 0);
+}
+
+/* ============================================================
+   Table bodies
+   ============================================================ */
+function td(v, cls){ return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</td>'; }
+
+(function(){
+  var tb = document.getElementById('aurc-tbody');
+  AURC.forEach(function(r){
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + td(nf(r[1],1)) +
+      td(fmt3(r[2][0])) + td(fmt3(r[2][1])) + td(fmt3(r[2][2])) +
+      td(fmt3(r[3][0]),'win') + td(fmt3(r[3][1]),'win') + td(fmt3(r[3][2]),'win');
+    if (r[0] === 'Eniac') tr.className = 'sep';
+    tb.appendChild(tr);
+  });
+
+  var gb = document.getElementById('grid-tbody');
+  GRID.forEach(function(r){
+    var best = Math.min.apply(null, r[1].filter(function(v){ return v !== null; }));
+    var cells = r[1].map(function(v){ return v === null ? td(L.na,'zero') : td(nf(v,3), v === best ? 'win' : ''); }).join('');
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0] + (r[0] === 'RePro' ? '†' : '')) + cells + td(nf(r[2],3),'win');
+    if (r[0] === 'Eniac') tr.className = 'sep';
+    gb.appendChild(tr);
+  });
+
+  var cb = document.getElementById('cov-tbody');
+  AURC.forEach(function(r){
+    var c = COV[r[0]];
+    function cell(p){
+      var better = (p[1] !== null) && (p[0] === null || p[1] > p[0]);
+      return '<td>' + fmt2(p[0]) + ' → <span' + (better ? ' style="color:var(--ink);font-weight:700"' : '') + '>' + fmt2(p[1]) + '</span></td>';
+    }
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + cell(c.k5r5) + cell(c.k5r10) + cell(c.k10r5) + cell(c.k10r10);
+    if (r[0] === 'Eniac') tr.className = 'sep';
+    cb.appendChild(tr);
+  });
+
+  var ct = document.getElementById('cert-tbody');
+  CERT.forEach(function(r){
+    function pair(cov, risk, win){
+      return td(nf(cov,3), win ? 'win' : (cov === 0 ? 'zero' : '')) +
+             td(risk === null ? '—' : nf(risk,3), 'zero');
+    }
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + pair(r[1],r[2],false) + pair(r[3],r[4], r[3] > r[1]) +
+                              pair(r[5],r[6],false) + pair(r[7],r[8], r[7] > r[5]);
+    ct.appendChild(tr);
+  });
+  var mr = document.createElement('tr'); mr.className = 'mean';
+  mr.innerHTML = td(L.mean) + td(nf(0.136,3)) + td('') + td(nf(0.569,3)) + td('') + td(nf(0.278,3)) + td('') + td(nf(0.731,3)) + td('');
+  ct.appendChild(mr);
+
+  var fb = document.getElementById('frw-tbody');
+  FRW.forEach(function(r){
+    function trio(a,b,c){
+      var mx = Math.max(a,b,c), any = mx > 0;
+      return td(nf(a,3), any && a === mx ? 'win' : (a === 0 ? 'zero' : '')) +
+             td(nf(b,3), any && b === mx ? 'win' : (b === 0 ? 'zero' : '')) +
+             td(nf(c,3), any && c === mx ? 'win' : (c === 0 ? 'zero' : ''));
+    }
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + trio(r[1],r[2],r[3]) + trio(r[4],r[5],r[6]);
+    fb.appendChild(tr);
+  });
+  var fm = document.createElement('tr'); fm.className = 'mean';
+  fm.innerHTML = td(L.mean) + td(nf(0.569,3)) + td(nf(0.596,3)) + td(nf(0.553,3)) + td(nf(0.731,3)) + td(nf(0.819,3)) + td(nf(0.711,3));
+  fb.appendChild(fm);
+
+  var eb = document.getElementById('en-tbody');
+  EN_ORDER.forEach(function(r){
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + td(nf(r[1],3)) + td(nf(r[2],3),'win') + td(nf(r[3],1) + '%') +
+      td(r[4] === null ? '—' : nf(r[4],3)) + td(r[5] === null ? '—' : nf(r[5],3), r[5] === null ? '' : 'win');
+    eb.appendChild(tr);
+  });
+  var em = document.createElement('tr'); em.className = 'mean';
+  em.innerHTML = td(L.median) + td('') + td('') + td(nf(56.8,1) + '%') + td('') + td('');
+  eb.appendChild(em);
+
+  var ecb = document.getElementById('encert-tbody');
+  ENCERT.forEach(function(r){
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + td(nf(r[1],3), r[1] > r[3] ? 'win' : (r[1] === 0 ? 'zero' : '')) + td(r[2],'zero') +
+      td(nf(r[3],3), r[3] > r[1] ? 'win' : (r[3] === 0 ? 'zero' : '')) + td(r[4],'zero');
+    ecb.appendChild(tr);
+  });
+  var ecm = document.createElement('tr'); ecm.className = 'mean';
+  ecm.innerHTML = td(L.mean) + td(nf(0.245,3)) + td('') + td(nf(0.622,3)) + td('');
+  ecb.appendChild(ecm);
+
+  var ab = document.getElementById('alt-tbody');
+  ALT.forEach(function(r){
+    var best = Math.min(r[1],r[2],r[3],r[4]);
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + td(nf(r[1],3), r[1]===best?'win':'') + td(nf(r[2],3), r[2]===best?'win':'') +
+      td(nf(r[3],3), r[3]===best?'win':'') + td(nf(r[4],3), r[4]===best?'win':'');
+    ab.appendChild(tr);
+  });
+  var am = document.createElement('tr'); am.className = 'mean';
+  am.innerHTML = td(L.mean) + td(nf(0.219,3)) + td(nf(0.074,3)) + td(nf(0.194,3)) + td(nf(0.203,3));
+  ab.appendChild(am);
+
+  var mb = document.getElementById('m-tbody');
+  MROWS.forEach(function(r){
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + td(r[1]) + td(r[2]) +
+      '<td style="text-align:left;font-variant-numeric:normal">' + r[3] + '</td>';
+    mb.appendChild(tr);
+  });
+
+  var lb = document.getElementById('ladder-tbody');
+  LADDER.forEach(function(r){
+    var tr = document.createElement('tr');
+    tr.innerHTML = td(r[0]) + td(nf(r[1],3), r[0] === L.rProtoLong ? 'win' : '') + td(nf(r[2],3), r[0] === L.rProtoLong ? 'win' : '');
+    lb.appendChild(tr);
+  });
+
+  var kb = document.getElementById('ks-tbody');
+  KSHOT.forEach(function(p, pi){
+    [['msp','MSP'],['ours',L.ours]].forEach(function(sr, si){
+      var tr = document.createElement('tr');
+      if (si === 0 && pi > 0) tr.className = 'sep';
+      tr.innerHTML = td(p.name + ', ' + sr[1]) + p[sr[0]].map(function(pt){
+        return td(nf(pt[0],3) + ' <span class="pm">±' + nf(pt[1],3) + '</span>', si === 1 ? 'win' : '');
+      }).join('');
+      kb.appendChild(tr);
+    });
+  });
+})();
+
+/* ============================================================
+   Draw everything
+   ============================================================ */
+drawAurc(); drawGrid(); drawCov(); drawAttr(); drawCert(); drawSetfit(); drawFrw();
+drawEn(); drawEncert(); drawKshot(); drawOod(); drawAbl(); drawAlt(); drawLlm();
+drawScorev(); drawM(); drawLadder();
+
+/* ============================================================
+   Controls
+   ============================================================ */
+var REDRAW = {t4:drawAttr, t5:drawCert, t6:drawSetfit, t7:drawFrw, t8:drawEn, t10:drawOod, t13:drawLlm, aurc:drawAurc};
+document.querySelectorAll('.seg').forEach(function(seg){
+  seg.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.view){
+      var t = b.dataset.target, chart = b.dataset.view === 'chart';
+      document.getElementById(t + '-chart').classList.toggle('hide', !chart);
+      document.getElementById(t + '-table').classList.toggle('hide', chart);
+      var lg = document.getElementById(t + '-legend');
+      if (lg) lg.classList.toggle('hide', !chart);
+    }
+    if (b.dataset.k){ covK = +b.dataset.k; drawCov(); }
+    if (b.dataset.r){ covR = +b.dataset.r; drawCov(); }
+    if (b.dataset.r5){
+      var id = b.dataset.r5, v = +b.dataset.v;
+      if (id === 't5') certR = v; else if (id === 't6') sfR = v; else if (id === 't7') frwR = v;
+      REDRAW[id]();
+    }
+    if (b.dataset.met){
+      var mid = b.dataset.met, mv = +b.dataset.v;
+      if (mid === 'aurc') aurcMet = mv; else if (mid === 't4') attrMet = mv;
+      else if (mid === 't8') enMet = mv; else if (mid === 't10') oodMet = mv;
+      else if (mid === 't13') llmMet = mv;
+      REDRAW[mid]();
+    }
+  });
+});
+
+document.querySelectorAll('.copy').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var pre = btn.parentNode.querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(function(){
+      var old = btn.textContent; btn.textContent = L.copied;
+      setTimeout(function(){ btn.textContent = old; }, 1400);
+    });
+  });
+});
+
+(function(){
+  var links = [].slice.call(document.querySelectorAll('#navlinks a'));
+  var secs = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if (!en.isIntersecting) return;
+      var i = secs.indexOf(en.target);
+      links.forEach(function(a, j){ a.classList.toggle('on', i === j); });
+    });
+  }, {rootMargin: '-45% 0px -50% 0px'});
+  secs.forEach(function(s){ if (s) obs.observe(s); });
+})();
+</script>
+</body>
+</html>
