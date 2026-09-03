@@ -581,7 +581,7 @@ footer a{color:var(--ink-2)}
         <div>
           <h3>Amplitude, em dois idiomas, com as falhas reportadas</h3>
           <p>Doze corpora em português e oito em inglês sob protocolo idêntico, cinco famílias de tarefa, três
-          orçamentos, cinco sorteios cada &mdash; não um único benchmark de brinquedo. Os corpora não foram filtrados
+          orçamentos, cinco sorteios cada. Os corpora não foram filtrados
           por resultados favoráveis: Brands e Eniac certificam cobertura zero para <em>todos</em> os métodos testados e
           são reportados junto aos demais, assim como o Reuters, o único corpus entre os vinte em que o baseline
           certifica e nós não.</p>
@@ -706,10 +706,7 @@ footer a{color:var(--ink-2)}
     </div>
 
     <div class="note narrow">
-      <h4>Por que o certificado vale apenas para o risco em distribuição</h4>
-      <p>Para uma instância OOD, toda aceitação é erro por definição, e a calibração nunca vê dados OOD. Um limiar
-      ajustado para erros em distribuição só rejeita classes não vistas na medida em que a geometria as posicione em
-      confiança mais baixa. Medimos esse comportamento; não o certificamos &mdash; e a medição não é lisonjeira.</p>
+      <h4>Por que a garantia se restringe ao risco em distribuição</h4> <p>Para uma instância OOD, qualquer aceitação constitui erro por definição, ao passo que o procedimento de calibração é realizado exclusivamente com dados em distribuição. Portanto, o limiar calibrado para controlar o risco em distribuição não fornece, por si só, uma garantia sobre o comportamento fora de distribuição. A rejeição de classes não observadas depende de sua posição relativa na geometria do espaço de representação e de sua consequente atribuição de confiança. Neste trabalho, esse comportamento é mensurado empiricamente, sem que se atribua ao método uma garantia de rejeição OOD. Os resultados evidenciam limitações relevantes nesse cenário.</p>
     </div>
   </div>
 </section>
@@ -1320,7 +1317,7 @@ footer a{color:var(--ink-2)}
       Eniac e 0,997 no RulingBR</b>. O OOD distante está praticamente saturado para essa geometria.</p>
     </div>
 
-    <h3 class="narrow">Ablação: qual ingrediente faz o trabalho?</h3>
+    <h3 class="narrow">Ablação</h3>
     <div class="panel">
       <div class="panel-head">
         <div><h4>Ablação no IntentPT</h4><div class="sub">As hastes são um desvio padrão entre folds. <span class="better" id="t11-better"></span></div></div>
