@@ -406,7 +406,7 @@ footer a{color:var(--ink-2)}
   <div class="wrap">
     <div class="venue">Artigo longo</div>
     <h1 class="title">Classificação Seletiva em Texto Few-Shot:
-      <em>A Geometria Prototípica Domina os Escores de Confiança</em>
+      <em>O Ganho Vem da Representação, Não do Escore de Confiança</em>
     </h1>
     <!-- Bloco de autoria da versão final entra aqui; omitido enquanto a submissão
          está anonimizada em duas vias (ver acl_latex.tex). -->
@@ -434,8 +434,8 @@ footer a{color:var(--ink-2)}
     <div class="stats">
       <div class="stat"><b>12&thinsp;/&thinsp;12</b><span>corpora em que a geometria prototípica supera <em>todos</em> os baselines post-hoc a 5-shot</span></div>
       <div class="stat"><b>&minus;67%</b><span>redução mediana de AURC contra o baseline mais forte sob varredura oracular</span></div>
-      <div class="stat"><b>0,0036</b><span>quanto o <em>escore</em> move o AURC &mdash; contra até 0,38 movidos pela <em>representação</em></span></div>
-      <div class="stat"><b>0,94</b><span>cobertura certificada a 5% de risco em decisões judiciais, onde o baseline ajustado é inviável</span></div>
+      <div class="stat"><b>24&times;</b><span>quanto a <em>representação</em> move o desempenho a mais que o <em>escore</em>, em E-AURC (mediana de 0,056 contra 0,0023)</span></div>
+      <div class="stat"><b>0,91</b><span>cobertura certificada a 5% de risco em decisões judiciais, sob calibração independente da seleção do modelo, onde o baseline ajustado é inviável</span></div>
       <div class="stat"><b>15,2%</b><span>risco de fato realizado por esse limiar certificado a 5% quando classes não vistas entram no fluxo</span></div>
     </div>
   </div>
@@ -455,9 +455,8 @@ footer a{color:var(--ink-2)}
 
     <div class="abstract narrow">
       <span class="lbl">Resumo</span>
-      <p>Modelos de classificação de texto em regime <em>few-shot</em> apresentam desempenho subótimo na abstenção: com poucos exemplos rotulados por classe, os escores de confiança ordenam os erros de forma insuficiente para que um limiar de risco-cobertura mantenha uma cobertura útil. Avaliando doze <em>corpora</em> em português sob orçamentos de 1 a 10 exemplos por classe, demonstramos que o <em>ajuste fino prototípico episódico</em> altera significativamente essa fronteira, reduzindo a AURC em uma mediana de 67% no cenário 5-shot em comparação a sete <em>baselines post-hoc</em>, incluindo o mais competitivo sob busca oracular. Utilizando um conjunto de calibração disjunto, o método certifica 0,94 de cobertura para um risco-alvo de 5% em textos de decisões judiciais, cenário em que o <em>baseline</em> ajustado não admite qualquer limiar viável.</p>
-      <p>Um experimento fatorial 4&times;2 avaliando representações e escores de confiança isola a origem do efeito: mantendo o escore fixo, a alteração da representação reduz a AURC de 0,450 para 0,072 no <em>corpus</em> de decisões judiciais; em contrapartida, mantendo a representação fixa, a variação do escore altera a métrica em apenas 0,0036 (em média, nos doze <em>corpora</em>). Os resultados indicam que o ganho provém da geometria aprendida, e não da função de confiança. Trata-se de uma melhoria estrutural na <em>ordenação</em> dos erros e não meramente na acurácia, uma vez que o efeito se mantém ao utilizar a AUROC (invariante à acurácia) e sob o controle de acurácia pareada. No entanto, intervenções na representação não são intercambiáveis: o modelo SetFit, mesmo com ajuste no conjunto de teste, apresenta desempenho substancialmente inferior e sofre degradação severa no cenário de um exemplo por classe. Ademais, um codificador multilíngue congelado equipara o desempenho do método proposto em tarefas de análise de sentimentos com alto recurso, mas apresenta resultado 6,8&times; inferior em textos jurídicos.</p>
-      <p>Uma etapa de calibração disjunta nos doze <em>corpora</em> certifica a cobertura sob as garantias teóricas estabelecidas; as tabelas de comparação sobre o conjunto total, por sua vez, selecionam o limiar <em>in-sample</em>, sendo reportadas como pontos de operação alcançáveis. A atribuição causal aos componentes é replicada em oito <em>corpora</em> em inglês sob um protocolo estritamente idêntico, no qual as variações extremas de desempenho divergem em menos de 0,003 em relação aos valores em português. Contudo, demonstra-se que esse certificado limita o risco apenas <em>in-distribution</em>: em um fluxo contendo classes não vistas, o mesmo limiar resulta em um erro empírico de 15,2% frente ao risco-alvo de 5%, evidenciando um hiato de robustez crítico para a implantação em sistemas reais.</p>
+      <p>Modelos de classificação de texto em regime <em>few-shot</em> ordenam mal os próprios erros: sob extrema escassez de dados, as estimativas de confiança não separam predições corretas de incorretas o bastante para sustentar cobertura útil sob restrição de risco. Avaliamos doze <em>corpora</em> em português com orçamentos de 1 a 10 exemplos por classe, contra sete <em>baselines post-hoc</em> &mdash; o mais forte deles sob busca oracular de hiperparâmetros. O <em>ajuste fino prototípico episódico</em> desloca essa fronteira: a AURC cai em uma mediana de 67% no cenário 5-shot. Sob um conjunto de calibração disjunto também da seleção do modelo, o método certifica 0,91 de cobertura para um risco-alvo de 5% em textos de decisões judiciais, cenário em que o <em>baseline</em> ajustado não admite qualquer limiar viável.</p>
+      <p>Um experimento fatorial 4&times;2 separa representação e estimador de confiança, e localiza o efeito na representação. Medido em grandezas que descontam a acurácia, trocar a representação move o desempenho de 6 a 24 vezes mais do que trocar o escore, conforme a grandeza: mediana de 0,056 contra 0,0023 em E-AURC e de 0,091 contra 0,014 em AUROC correto-vs-incorreto, nos doze <em>corpora</em>. Duas ressalvas qualificam o achado. As intervenções na representação não são intercambiáveis &mdash; o SetFit, mesmo com ajuste no conjunto de teste, fica bem atrás e sofre degradação severa a um exemplo por classe. E o certificado limita o risco apenas <em>in-distribution</em>: em um fluxo contendo classes não vistas, o mesmo limiar resulta em erro empírico de 15,2% frente ao risco-alvo de 5%.</p>
     </div>
 
     <div class="cards">
@@ -494,14 +493,18 @@ footer a{color:var(--ink-2)}
         <h4>O que adotamos, em vez de propor</h4>
         <p>O <b>SGR</b> é um arcabouço post-hoc existente (Geifman &amp; El-Yaniv, 2017) e o <b>LAQDA</b> um backbone
         existente cujos dois mecanismos consideramos dispensáveis. O ingrediente operante é um encoder prototípico
-        simples, disponível a qualquer pessoa que já use redes prototípicas.</p>
+        simples, disponível a qualquer pessoa que já use redes prototípicas. Chamamos de <b>ProtoSel</b> o sistema
+        avaliado aqui &mdash; ajuste fino prototípico episódico, escore geométrico e limiar SGR em conjunto &mdash;
+        para distingui-lo do LAQDA, que é apenas a arquitetura base herdada.</p>
       </div>
       <div class="card">
         <div class="n">TRABALHO ANTERIOR</div>
         <h4>A ordenação é conhecida em visão; a magnitude não</h4>
         <p>Que a qualidade da representação domine o estimador post-hoc já está estabelecido para classificadores
-        ImageNet com dados abundantes. Nossa contribuição é a magnitude no regime few-shot &mdash; duas ordens de
-        grandeza, e uma sensibilidade ao escore que cai cerca de oito vezes com a adaptação.</p>
+        ImageNet com dados abundantes. Nossa contribuição é a magnitude no regime few-shot. Medida em grandezas que descontam a
+        acurácia, ela fica entre 6 e 24 vezes, conforme a grandeza: mediana de 0,056 contra 0,0023 em E-AURC e de 0,091
+        contra 0,014 em AUROC correto-vs-incorreto. A sensibilidade ao escore cai cerca de oito vezes com a
+        adaptação.</p>
       </div>
     </div>
   </div>
@@ -526,9 +529,11 @@ footer a{color:var(--ink-2)}
           <p>Detecção de OOD post-hoc e classificação seletiva avançaram sobretudo projetando funções de confiança cada
           vez mais elaboradas &mdash; Mahalanobis, <var>k</var>NN, GradNorm, ReAct, ConjNorm &mdash; sobre
           <em>uma representação tomada como dada</em>. Nossa <a href="#attribution">atribuição 4&times;2</a> mostra que,
-          no regime few-shot, esse eixo está quase esgotado. Com a representação fixa, trocar de função de confiança
-          move o AURC em <b>0,0036</b> em média nos doze corpora, sem vencedor consistente; com o escore fixo, mudar a
-          representação o move em <b>até 0,38</b>. A sensibilidade ao escore é ela própria função da adaptação, caindo
+          no regime few-shot, esse eixo está quase esgotado. Medido em grandezas que descontam a acurácia &mdash; a
+          comparação honesta, já que trocar o escore mantém a acurácia fixa por construção e trocar a representação
+          não &mdash; a representação move o desempenho de <b>6 a 24 vezes</b> mais que o escore, conforme a grandeza:
+          mediana de <b>0,056 contra 0,0023</b> em E-AURC e de <b>0,091 contra 0,014</b> em AUROC correto-vs-incorreto, nos doze
+          corpora. Em AURC bruta a razão passa de 100, mas parte dela é aritmética. A sensibilidade ao escore é ela própria função da adaptação, caindo
           cerca de oito vezes de um encoder congelado para um treinado episodicamente. O achado contraria nosso próprio
           enquadramento anterior, e é isso que o torna digno de relato: é necessário redirecionar o foco empírico dos escores
           post-hoc para a estruturação do espaço latente.</p>
@@ -543,9 +548,10 @@ footer a{color:var(--ink-2)}
           quando a própria representação é estimada a partir de cinco exemplos por classe. Sob calibração disjunta, o
           baseline ajustado não admite <em>limiar viável algum</em> a 5% de risco em <b>seis dos doze corpora</b>; nosso
           seletor certifica cobertura não nula em quatro desses seis. No RulingBR, o limite mais apertado que o MSP
-          alcança sob <em>qualquer</em> busca de limiar é <var>b</var>*&thinsp;=&thinsp;0,211, enquanto nosso seletor
-          certifica <b>0,94 de cobertura</b>. É a diferença entre um sistema que pode ser implantado sob restrição de
-          risco e um que não pode.</p>
+          alcança varrendo todo limiar é <var>b</var>*&thinsp;=&thinsp;0,211 &mdash; e mesmo sem correção alguma pela
+          multiplicidade da busca, o piso fica em 0,149, bem acima da meta de 5%. Nosso seletor certifica ali
+          <b>0,94 de cobertura</b> (0,91 sob calibração independente da seleção do modelo). É a diferença entre um
+          sistema que pode ser implantado sob restrição de risco e um que não pode.</p>
         </div>
       </article>
 
@@ -769,6 +775,12 @@ footer a{color:var(--ink-2)}
       dois níveis de risco tabulados &mdash; ela vale ao longo de toda a curva de risco&ndash;cobertura &mdash; e não se
       explica pela forma superficial, já que um classificador TF-IDF sobre o mesmo suporte é mais fraco que ambos os
       métodos.</p>
+      <p><b>Esse é também o corpus de maior dispersão entre folds, e a média sozinha o descreve mal.</b> No RulingBR o
+      AURC do nosso seletor é 0,073&thinsp;&plusmn;&thinsp;0,069 com mediana 0,045: um fold registra 0,201 contra 0,012
+      do melhor. Quem for reproduzir deve esperar essa variação. Nos outros dez corpora o coeficiente de variação fica
+      entre 0,11 e 0,32, e a média descreve bem a distribuição; o Brands é o outro caso assimétrico, mas por ter dois
+      folds com AURC exatamente zero, e não por uma cauda ruim. A dispersão do AURC não se transfere para a cobertura
+      certificada: no RulingBR ela é 0,943, 0,997, 0,956, 0,875 e 0,943 fold a fold.</p>
     </div>
 
     <h3 class="narrow">Os sete baselines post-hoc</h3>
@@ -842,7 +854,9 @@ footer a{color:var(--ink-2)}
     <div class="narrow">
       <p>Sob essa regra, o nosso lidera o MSP em dez dos doze corpora nos dois níveis de risco, com cobertura média de
       0,50 vs. 0,13 a 5% e 0,62 vs. 0,24 a 10% (<em>p</em>&thinsp;=&thinsp;0,00195 por teste de postos sinalizados de
-      Wilcoxon nos dois níveis, empates em &asymp;0 descartados).</p>
+      Wilcoxon nos dois níveis, sobre <var>n</var>&thinsp;=&thinsp;10 pares após descartar os dois corpora em que ambos
+      cobrem &asymp;0; com dez pares, 2/2<sup>10</sup>&thinsp;=&thinsp;0,00195 é o menor valor atingível). Sobre a
+      métrica de AURC, em que nenhum par empata, o mesmo teste dá 0,00049 com <var>n</var>&thinsp;=&thinsp;12.</p>
     </div>
 
     <div class="note narrow warn">
@@ -944,6 +958,24 @@ footer a{color:var(--ink-2)}
       entre os dois escores sobre a representação prototípica é <b>0,0036</b> (mediana 0,0023), sem vencedor
       consistente. O painel invariante à acurácia diz o mesmo: sobre a representação prototípica, os dois escores
       diferem em no máximo 0,019.</p>
+      <p><b>De onde vêm os dois números que a página cita como efeito da representação.</b> Fixando o escore no MSP e
+      trocando só a geometria &mdash; do encoder CE para o prototípico, sobre o <em>mesmo</em> backbone &mdash;, a
+      mediana nos doze corpora é de <b>0,056</b> em E-AURC e de <b>0,091</b> em AUROC correto-vs-incorreto. Contra
+      0,0023 e 0,014 do lado do escore, dão as razões de 24 e 6,5 que delimitam a faixa. O contraste com o encoder
+      congelado não serve aqui, porque troca também a arquitetura base. Uma identidade merece registro, porque a
+      usamos: como cos e MSP compartilham o argmax, a taxa de erro é a mesma nas duas leituras e o termo que a E-AURC
+      subtrai cancela na diferença, de modo que Δ&thinsp;E-AURC = Δ&thinsp;AURC <em>exatamente</em> para o contraste de
+      escore &mdash; é por isso que 0,0036 e 0,0023, medidos em AURC, valem também em E-AURC. A identidade não vale para
+      o contraste de representação, em que a acurácia muda, e por isso a coluna de E-AURC daquele lado precisa ser
+      calculada.</p>
+      <p>Cabe delimitar o que essa célula estabelece. Os dois escores contrapostos ali são funções do mesmo vetor de
+      similaridades aos mesmos protótipos, e que difiram pouco é em parte esperado por construção. O apêndice de
+      variantes amplia o conjunto para cinco estimadores, incluindo o X-Mahalanobis, que lê a mesma geometria por
+      covariância entre camadas e é o único a se destacar &mdash; ainda assim a 0,0096 do cosseno, uma ordem de
+      grandeza abaixo do efeito da representação. Os escores estruturalmente distintos da grade completa (Energy,
+      <var>k</var>NN, Mahalanobis, GradNorm, ReAct, ConjNorm) não foram avaliados sobre a representação prototípica.
+      O que os dados sustentam é a convergência entre estimadores lidos sobre uma geometria adaptada, e não a
+      indiferença a qualquer escore post-hoc.</p>
     </div>
 
     <h3 class="narrow">A escada: quanto o escore importa, conforme a adaptação do espaço</h3>
@@ -982,7 +1014,9 @@ footer a{color:var(--ink-2)}
       passos que envolvem aprendizado de representação explicitamente estruturado para a tarefa &mdash; contrastivo e
       episódico &mdash; e esses estão separados por um fator de quatro. E a escada é monótona pela mediana nos doze
       corpora em português e pela média nos oito em inglês, <em>não</em> corpus a corpus.</p>
-      <p>Decompor a diferença por escore diz <em>por quê</em>, e a resposta é unidirecional: nos quatro degraus, o MSP
+      <p>Decompor a diferença por escore diz <em>por quê</em>, e a resposta é unidirecional. Esta decomposição muda de
+      escopo, e o registramos: ela é a média sobre os <em>quatro</em> corpora de aprofundamento da grade 4&times;2, e não
+      sobre os doze das medianas acima. Nos quatro degraus, o MSP
       sobe 0,754&thinsp;&rarr;&thinsp;0,730&thinsp;&rarr;&thinsp;0,754&thinsp;&rarr;&thinsp;0,873 enquanto o escore
       cosseno sobe 0,650&thinsp;&rarr;&thinsp;0,671&thinsp;&rarr;&thinsp;0,737&thinsp;&rarr;&thinsp;0,872. <b>O MSP é
       pelo menos tão bom quanto o escore cosseno em toda representação e nos dois idiomas</b>; a diferença fecha porque
@@ -1023,8 +1057,11 @@ footer a{color:var(--ink-2)}
       <h4>Isso não se reduz a &ldquo;ajuste fino gera um classificador melhor&rdquo;</h4>
       <p>A AUROC correto-vs-incorreto é calculada apenas sobre entradas ID e é invariante a quantas o modelo acerta.
       Contra o baseline da Tabela 1, ela sobe de 0,704 para 0,929 no RulingBR, 0,600 para 0,779 no TuPy, 0,811 para
-      0,917 no B2WReviews e 0,806 para 0,863 no IntentPT. Parear a acurácia por subamostragem dá AURC 0,029 vs. 0,048,
-      0,251 vs. 0,283, 0,310 vs. 0,450 e 0,102 vs. 0,188 &mdash; melhor nos quatro. A vantagem de ordenação sobrevive à
+      0,917 no B2WReviews e 0,806 para 0,863 no IntentPT. Parear a acurácia por subamostragem, descartando
+      acertos do modelo mais acurado até igualar o outro e comparando contra o mesmo baseline varrido das tabelas
+      principais, dá AURC 0,029 vs. 0,048 no B2WReviews, 0,250 vs. 0,283 no IntentPT, 0,307 vs. 0,450 no RulingBR e
+      0,103 vs. 0,188 no TuPy &mdash; melhor nos quatro. Restringindo às entradas ID: 0,029 vs. 0,048, 0,157 vs. 0,182,
+      0,206 vs. 0,340 e 0,103 vs. 0,188. A vantagem de ordenação sobrevive à
       remoção completa da vantagem de acurácia, em qualquer das duas populações.</p>
       <p>Mas a melhoria é propriedade da geometria aprendida, e atribuí-la à nossa escolha de função de confiança
       &mdash; como fazia um enquadramento anterior desse trabalho &mdash; não se sustenta nos dados.</p>
@@ -1039,9 +1076,14 @@ footer a{color:var(--ink-2)}
       <div class="kicker">Certificação</div>
       <h2>De atingível a certificado</h2>
       <p class="lede">Nos <b>doze corpora</b> reexecutamos o pipeline selecionando o limiar no conjunto de validação ID
-      e aplicando-o sem alteração ao teste. Esse conjunto é disjunto tanto do suporte quanto da avaliação, então a
-      condição de independência do limite é satisfeita e todo número abaixo é certificado no sentido de Geifman &amp;
-      El-Yaniv.</p>
+      e aplicando-o sem alteração ao teste. Esse conjunto é disjunto do suporte e da avaliação &mdash; mas não do
+      procedimento que escolheu o checkpoint, já que a parada antecipada monitora a perda nessa mesma partição. A
+      garantia de Geifman &amp; El-Yaniv exige independência em relação ao classificador, então refizemos a
+      certificação sobre uma partição que nenhuma etapa de seleção de modelo tocou: <b>metade do conjunto de teste
+      calibra, a outra metade mede</b>. A cobertura média cai de 0,569 para <b>0,538</b> a 5% de risco, e o risco
+      realizado excede o alvo em 26 de 1.908 células &mdash; taxa de violação de 1,4% contra o &delta; = 5% nominal. É
+      esse número que sustenta a palavra &ldquo;certificado&rdquo;; a tabela abaixo mantém a calibração original, que é
+      idêntica para os dois métodos e portanto não favorece nenhum deles.</p>
     </div>
 
     <div class="panel">
@@ -1068,7 +1110,10 @@ footer a{color:var(--ink-2)}
       <b>duas</b> dessas 97 &mdash; taxa de 2,1% contra o <var>&delta;</var>&thinsp;=&thinsp;5% nominal. As duas
       violações são de terceira casa decimal (Buscape fold 02 realiza 0,0503 a uma meta de 5%; HateBR fold 01 realiza
       0,1012 a 10%). Células inviáveis ficam fora do denominador e as 97 não são independentes, então isto é uma
-      checagem de consistência contra <var>&delta;</var>, não um teste binomial dele.</p>
+      checagem de consistência contra <var>&delta;</var>, não um teste binomial dele. Uma média baixa pode significar
+      cobertura pequena em todas as partições ou cobertura razoável em algumas e nenhuma nas demais; a 5% de risco, o
+      nosso seletor admite limiar viável em 5 de 5 partições em oito corpora, 3 de 5 no Buscape e no TuPy, e nenhuma no
+      Brands e no Eniac, enquanto o MSP fica em 0 de 5 em seis corpora.</p>
     </div>
       </div>
     </div>
@@ -1082,7 +1127,14 @@ footer a{color:var(--ink-2)}
       zero é o procedimento se comportando corretamente diante de um escore que não sustenta a meta.</em></p>
       <p>A inviabilidade é propriedade dos valores de confiança, não da busca: varrendo todo limiar do conjunto de
       calibração, o limite mais apertado que o MSP alcança é <var>b</var>*&thinsp;=&thinsp;0,211 no RulingBR e 0,068 no
-      IntentPT. Não existe limiar que atenda a 10% no RulingBR ou a 5% no IntentPT sob busca alguma.</p>
+      IntentPT. Cabe declarar a correção usada nessa varredura: ela mantém
+      <var>&delta;</var>&prime;&thinsp;=&thinsp;<var>&delta;</var>/&lceil;log<sub>2</sub>&thinsp;<var>m</var>&rceil;,
+      dimensionada para os candidatos que uma busca binária visita, e não <var>&delta;</var>/<var>m</var>, que seria a
+      correção própria de uma varredura sobre os <var>m</var> quantis &mdash; ou seja, a mais permissiva das duas, e o
+      <var>b</var>* reportado é um piso otimista. Levando ao limite, sem correção nenhuma o piso cai para 0,149 no
+      RulingBR e 0,049 no IntentPT. A inviabilidade do RulingBR a 5% independe portanto da correção; a do IntentPT não
+      &mdash; ali ela depende de a multiplicidade da busca ser contabilizada, como deve ser em qualquer certificado
+      válido.</p>
     </div>
 
     <h3 class="narrow">Contra o SetFit, nos corpora de aprofundamento</h3>
@@ -1149,7 +1201,17 @@ footer a{color:var(--ink-2)}
       <p>A diferença se concentra onde a correção de união do SGR custa mais: no Brands, cujo
       <var>m</var>&thinsp;=&thinsp;45 fica um ponto abaixo do limite de viabilidade do SGR a 10%, <b>o CRC transforma um
       0,000 certificado em 0,933</b> &mdash; ou seja, parte do que atribuímos a <var>m</var> pequeno é atribuível à
-      correção. O LTT, que controla a busca com correção de Bonferroni, é pior que o SGR em todos os corpora.</p>
+      correção. O LTT, que controla a busca com correção de Bonferroni, fica abaixo do SGR em oito dos doze corpora a
+      5% de risco, empata em três e o supera apenas no Buscape.</p>
+      <p><b>A ressalva que decide entre as duas regras não é a monotonicidade, e sim a forma da garantia.</b> O SGR e o
+      LTT dão garantias PAC &mdash; limitam Pr(<var>R</var>&thinsp;&gt;&thinsp;<var>r</var>*) por <var>&delta;</var>
+      sobre o sorteio da calibração &mdash; ao passo que o CRC controla o risco <em>em esperança</em> sobre esse mesmo
+      sorteio. Exigir esperança é estritamente menos que exigir alta probabilidade, e parte da cobertura extra do CRC
+      decorre de exigir menos, não de ser um procedimento melhor. A regra prática é uma só: use o CRC quando o
+      compromisso for com o risco <em>médio</em> do sistema ao longo de muitas implantações e <var>m</var> for pequeno o
+      bastante para a correção de união do SGR colapsar a cobertura; use o SGR quando o compromisso for com <em>esta</em>
+      implantação, sobre <em>esta</em> calibração. O CRC cobre mais porque promete menos, e não substitui o SGR onde a
+      promessa mais forte é a exigida.</p>
     </div>
 
     <div class="note narrow warn">
@@ -1191,10 +1253,11 @@ footer a{color:var(--ink-2)}
         <div class="tbl-wrap">
       <table>
         <caption><b>Tabela 8.</b> Corpora em inglês, 5-shot, média sobre 5 folds. O baseline CE recebe a mesma varredura
-        oracular de três taxas de aprendizado, escolhida no teste, que recebe em português. A AUROC correto-vs-incorreto
-        é indefinida para o SST-2, cujas duas classes ID não deixam partição OOD.</caption>
+        oracular de três taxas de aprendizado, escolhida no teste, que recebe em português. As duas últimas colunas são a
+        AUROC de separação ID/OOD (a AUROC correto-vs-incorreto é a escada da Tabela 18); ela é indefinida para o SST-2,
+        cujas duas classes ID não deixam partição OOD.</caption>
         <thead>
-          <tr><th></th><th colspan="3" class="rule">AURC &darr;</th><th colspan="2" class="rule">AUROC c-vs-i &uarr;</th></tr>
+          <tr><th></th><th colspan="3" class="rule">AURC &darr;</th><th colspan="2" class="rule">AUROC ID/OOD &uarr;</th></tr>
           <tr><th>Corpus</th><th>CE</th><th>Nosso</th><th>&Delta;%</th><th>CE</th><th>Nosso</th></tr>
         </thead>
         <tbody id="en-tbody"></tbody>
@@ -1267,7 +1330,7 @@ footer a{color:var(--ink-2)}
       <div class="panel-body hide" id="kshot-table">
         <div class="tbl-wrap">
           <table>
-            <caption><b>Tabela 17.</b> AURC &darr; versus orçamento <var>K</var>, média &plusmn; desvio sobre 5 folds. O MSP está na configuração publicada nos três orçamentos.</caption>
+            <caption><b>Tabela 17.</b> AURC &darr; versus orçamento <var>K</var>, média &plusmn; desvio sobre 5 folds. O MSP está na configuração publicada nos três orçamentos. A célula do RePro a 5-shot é a média de quatro folds: no fold 01 dessa execução os relatórios arquivados trazem a acurácia invertida em relação aos próprios logits (0,242 contra 0,758), e ele é excluído &mdash; a mesma exclusão da Tabela 2.</caption>
             <thead><tr><th>Corpus / método</th><th>1-shot</th><th>5-shot</th><th>10-shot</th></tr></thead>
             <tbody id="ks-tbody"></tbody>
           </table>
@@ -1330,7 +1393,7 @@ footer a{color:var(--ink-2)}
       <table>
         <caption><b>Tabela 11.</b> Ablação no IntentPT (48 classes), AURC &darr;, média &plusmn; desvio sobre 5 folds.
         As quatro configurações superam todos os baselines post-hoc nesse corpus por larga margem (0,105&ndash;0,119
-        contra 0,282 do MSP varrido).</caption>
+        contra 0,283 do MSP varrido).</caption>
         <thead><tr><th>Configuração</th><th>1-shot</th><th>5-shot</th><th>10-shot</th></tr></thead>
         <tbody>
           <tr><td>Completa (adaptador + QDA)</td><td>,138&thinsp;<span class="pm">±,020</span></td><td>,117&thinsp;<span class="pm">±,027</span></td><td>,113&thinsp;<span class="pm">±,026</span></td></tr>
@@ -1411,7 +1474,7 @@ footer a{color:var(--ink-2)}
           <tr><td>Nosso</td><td class="win">0,073</td><td class="win">0,022</td><td class="win">0,944</td></tr>
           <tr class="sep"><td rowspan="4">IntentPT<br><span style="color:var(--ink-3);font-weight:400;font-size:.9em">48 classes</span></td><td>TF-IDF</td><td>0,415</td><td>0,145</td><td>0,457</td></tr>
           <tr><td>Qwen2.5-7B</td><td>0,385</td><td>0,154</td><td>0,512</td></tr>
-          <tr><td>MSP</td><td>0,282</td><td>0,117</td><td>0,607</td></tr>
+          <tr><td>MSP</td><td>0,283</td><td>0,117</td><td>0,607</td></tr>
           <tr><td>Nosso</td><td class="win">0,117</td><td class="win">0,057</td><td class="win">0,849</td></tr>
         </tbody>
       </table>
@@ -1445,16 +1508,18 @@ footer a{color:var(--ink-2)}
         <div class="tbl-wrap">
       <table>
         <caption><b>Tabela 14.</b> AURC médio e ganho médio sobre o MSP para cada variante de escore de confiança sobre
-        a mesma representação prototípica, média nos doze corpora a 5-shot. Nenhuma variante é universalmente superior,
-        então as tabelas principais reportam o escore cosseno base em vez do melhor por corpus &mdash; o que equivaleria
-        a selecionar no conjunto de teste.</caption>
+        a mesma representação prototípica, média nos doze corpora a 5-shot. O comparador é o MSP na configuração varrida
+        por oráculo (média 0,2181 nos doze), o mesmo da Tabela 1. Quatro casas porque a dispersão entre variantes está na
+        terceira: as cinco cabem em 0,011 de AURC. Nenhuma variante é universalmente superior, então as tabelas
+        principais reportam o escore cosseno base em vez do melhor por corpus &mdash; o que equivaleria a selecionar no
+        conjunto de teste.</caption>
         <thead><tr><th>Escore</th><th>AURC &darr;</th><th>Ganho vs. MSP &uarr;</th></tr></thead>
         <tbody>
-          <tr><td>Margem</td><td class="win">0,072</td><td class="win">+0,147</td></tr>
-          <tr><td>TempScale</td><td>0,072</td><td>+0,147</td></tr>
-          <tr><td>MC Dropout</td><td>0,073</td><td>+0,146</td></tr>
-          <tr><td>Cosseno <span style="color:var(--ink-3);font-weight:400">(reportado)</span></td><td>0,074</td><td>+0,145</td></tr>
-          <tr><td>X-Mahalanobis</td><td>0,083</td><td>+0,136</td></tr>
+          <tr><td>Margem</td><td class="win">0,0723</td><td class="win">+0,1458</td></tr>
+          <tr><td>TempScale</td><td>0,0725</td><td>+0,1456</td></tr>
+          <tr><td>MC Dropout</td><td>0,0727</td><td>+0,1454</td></tr>
+          <tr><td>Cosseno <span style="color:var(--ink-3);font-weight:400">(reportado)</span></td><td>0,0737</td><td>+0,1444</td></tr>
+          <tr><td>X-Mahalanobis</td><td>0,0833</td><td>+0,1348</td></tr>
         </tbody>
       </table>
     </div>
@@ -1463,7 +1528,9 @@ footer a{color:var(--ink-2)}
     <div class="narrow">
       <p>A dispersão estreita é a <a href="#attribution">atribuição</a> vista de outro ângulo: uma vez estruturado o
       espaço, a escolha do escore é quase imaterial. Os ganhos são de <b>ordenação, não de calibração</b> &mdash; o
-      escore cosseno não é uma probabilidade e seu ECE é ruim (0,316 no B2WReviews contra 0,038 do MSP). O
+      escore cosseno não é uma probabilidade e seu ECE é ruim (0,316 no B2WReviews contra 0,038 do MSP na configuração
+      <em>publicada</em> &mdash; é a única comparação desta página que não usa o MSP varrido, porque calibração e
+      ordenação não se movem juntas sob a varredura). O
       escalonamento por temperatura sobre as mesmas similaridades recupera a calibração e até melhora sobre o MSP ali
       (0,010), embora não uniformemente (0,115 no IntentPT contra 0,046). Prefira o TempScale quando forem necessárias
       probabilidades calibradas a jusante.</p>
@@ -1629,7 +1696,7 @@ make test-baselines                 <span class="c"># testes dos scorers</span><
       <button class="copy">Copiar</button>
       <pre id="bib">@inproceedings{selective_risk_ptbr,
   title     = {Classificação Seletiva em Texto Few-Shot:
-               A Geometria Prototípica Domina os Escores de Confiança},
+               O Ganho Vem da Representação, Não do Escore de Confiança},
   author    = {Anonymous},
   booktitle = {Under review},
   year      = {2026},
@@ -1769,16 +1836,16 @@ var CORPUS_GROUPS = [
 /* corpus, %OOD, MSP[aurc,eaurc,acc] (oracle-swept), OURS[aurc,eaurc,acc] */
 var AURC = [
   ['B2WReviews',   0.0, [0.048,0.036,0.855], [0.004,0.003,0.971]],
-  ['Brands',       0.0, [0.025,0.020,0.912], [0.003,0.003,0.978]],
+  ['Brands',       0.0, [0.026,0.021,0.912], [0.003,0.003,0.978]],
   ['Buscape',      0.0, [0.093,0.070,0.803], [0.047,0.037,0.867]],
   ['Olist',        0.0, [0.062,0.048,0.842], [0.016,0.013,0.923]],
-  ['RePro',        0.0, [0.073,0.054,0.813], [0.008,0.007,0.963]],
+  ['RePro',        0.0, [0.073,0.053,0.813], [0.008,0.007,0.963]],
   ['HateBR',       0.0, [0.308,0.218,0.631], [0.024,0.018,0.900]],
   ['TuPy',         0.0, [0.167,0.134,0.776], [0.068,0.048,0.806]],
-  ['Eniac',       19.9, [0.503,0.238,0.463], [0.255,0.146,0.720]],
-  ['Recognasumm', 20.1, [0.338,0.169,0.604], [0.136,0.070,0.839]],
-  ['IntentPT',    20.0, [0.282,0.117,0.607], [0.117,0.057,0.849]],
-  ['MMLU-PT-BR',  19.7, [0.265,0.094,0.596], [0.134,0.054,0.788]],
+  ['Eniac',       19.9, [0.504,0.239,0.463], [0.255,0.146,0.720]],
+  ['Recognasumm', 20.1, [0.338,0.168,0.604], [0.136,0.070,0.839]],
+  ['IntentPT',    20.0, [0.283,0.117,0.607], [0.117,0.057,0.849]],
+  ['MMLU-PT-BR',  19.7, [0.266,0.094,0.596], [0.134,0.054,0.788]],
   ['RulingBR',    20.2, [0.450,0.195,0.495], [0.073,0.022,0.944]]
 ];
 
@@ -1893,14 +1960,14 @@ var ABL = [
 
 var ALT = [
   ['B2WReviews',  0.048,0.004,0.008,0.017],
-  ['Brands',      0.025,0.003,0.017,0.004],
+  ['Brands',      0.026,0.003,0.017,0.004],
   ['Buscape',     0.093,0.047,0.308,0.151],
-  ['Eniac',       0.503,0.255,0.433,0.461],
+  ['Eniac',       0.504,0.255,0.433,0.461],
   ['HateBR',      0.308,0.024,0.306,0.183],
-  ['IntentPT',    0.282,0.117,0.114,0.212],
-  ['MMLU-PT-BR',  0.265,0.134,0.142,0.305],
+  ['IntentPT',    0.283,0.117,0.114,0.212],
+  ['MMLU-PT-BR',  0.266,0.134,0.142,0.305],
   ['Olist',       0.062,0.016,0.229,0.036],
-  ['RePro',       0.087,0.008,0.015,0.012],
+  ['RePro',       0.073,0.008,0.015,0.012],
   ['Recognasumm', 0.338,0.136,0.137,0.369],
   ['RulingBR',    0.450,0.073,0.075,0.464],
   ['TuPy',        0.167,0.068,0.550,0.219]
@@ -1910,15 +1977,15 @@ var ALT = [
 var LLM = [
   ['B2WReviews', [[0.105,0.079,0.781],[0.048,0.036,0.855],[0.011,0.011,0.973],[0.004,0.003,0.971]]],
   ['RulingBR',   [[0.648,0.310,0.388],[0.450,0.195,0.495],[0.192,0.078,0.735],[0.073,0.022,0.944]]],
-  ['IntentPT',   [[0.415,0.145,0.457],[0.282,0.117,0.607],[0.385,0.154,0.512],[0.117,0.057,0.849]]]
+  ['IntentPT',   [[0.415,0.145,0.457],[0.283,0.117,0.607],[0.385,0.154,0.512],[0.117,0.057,0.849]]]
 ];
 
 var SCOREV = [
-  [L.svMargin, 0.072, 0.147],
-  ['TempScale', 0.072, 0.147],
-  ['MC Dropout', 0.073, 0.146],
-  [L.svCos,     0.074, 0.145],
-  ['X-Mahalanobis', 0.083, 0.136]
+  [L.svMargin, 0.0723, 0.1458],
+  ['TempScale', 0.0725, 0.1456],
+  ['MC Dropout', 0.0727, 0.1454],
+  [L.svCos,     0.0737, 0.1444],
+  ['X-Mahalanobis', 0.0833, 0.1348]
 ];
 
 /* 4x2 attribution grid: repr -> [MSP per corpus], [cos per corpus] */
@@ -1936,7 +2003,7 @@ var ATTR = {
 };
 
 var KSHOT = [
-  {name:'RePro',      max:0.60, msp:[[.248,.066],[.229,.318],[.032,.014]], ours:[[.017,.006],[.008,.002],[.007,.003]]},
+  {name:'RePro',      max:0.60, msp:[[.248,.066],[.070,.021],[.032,.014]], ours:[[.017,.006],[.008,.002],[.007,.003]]},
   {name:'B2WReviews', max:0.35, msp:[[.233,.073],[.056,.021],[.022,.004]], ours:[[.020,.011],[.004,.001],[.004,.001]]},
   {name:'RulingBR',   max:0.90, msp:[[.775,.081],[.481,.113],[.156,.091]], ours:[[.099,.097],[.073,.069],[.072,.070]]}
 ];
@@ -2302,7 +2369,7 @@ function drawEn(){
     series: [{name:L.ours, cls:'s1'}, {name:'CE', cls:'s2'}],
     max: mi === 0 ? 0.8 : 1, ticks: mi === 0 ? [0,0.2,0.4,0.6,0.8] : [0,0.25,0.5,0.75,1],
     fmt: function(v){ return v === null ? '—' : nf(v,3); }, tickFmt: pct,
-    axisTitle: mi === 0 ? L.axAurc : L.axAuroc
+    axisTitle: mi === 0 ? L.axAurc : L.axAurocOod
   });
   legend('t8', [{name:L.ours, cls:'s1'}, {name:'CE', cls:'s2'}]); badge('t8', mi === 0);
 }
@@ -2371,10 +2438,10 @@ function drawScorev(){
   bars(document.getElementById('t14-plot'), {
     rows: SCOREV.map(function(r){
       return {name:r[0], vals:[r[1]],
-        extra:'<div class="r"><span>' + L.gain + '</span><span class="v">+' + nf(r[2],3) + '</span></div>'};
+        extra:'<div class="r"><span>' + L.gain + '</span><span class="v">+' + nf(r[2],4) + '</span></div>'};
     }),
     series: S_ONE, max: 0.12, ticks: [0,0.03,0.06,0.09,0.12], labWidth: 170,
-    fmt: function(v){ return nf(v,3); }, tickFmt: pct, axisTitle: L.axAurc
+    fmt: function(v){ return nf(v,4); }, tickFmt: pct, axisTitle: L.axAurc
   });
   badge('t14', true);
 }
