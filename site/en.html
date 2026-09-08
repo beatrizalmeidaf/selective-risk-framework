@@ -920,9 +920,9 @@ footer a{color:var(--ink-2)}
         <div class="tbl-wrap">
       <table>
         <caption><b>Table 4.</b> The full 4&times;2 grid, 5-shot, mean over 5 folds. Frozen is the better of BGE-M3 and
-        multilingual-E5 per corpus, chosen on test; CE is at its best of three learning-rate settings and SetFit at its
-        best of three training settings on B2W and TuPy, also chosen on test &mdash; oracle advantages granted to the
-        baselines and not to us. Changing the representation moves the numbers; changing the score within a
+        multilingual-E5 per corpus, chosen on test, and CE is at its best of three learning-rate settings, also chosen on
+        test &mdash; oracle advantages granted to the baselines, never to us. SetFit is at its best of three training
+        settings on B2W and TuPy, chosen by <em>validation</em> AURC. Changing the representation moves the numbers; changing the score within a
         representation barely does.</caption>
         <thead><tr><th>Repr.</th><th>Score</th><th>B2W</th><th>Intent</th><th>Ruling</th><th>TuPy</th></tr></thead>
         <tbody>
@@ -1057,9 +1057,9 @@ footer a{color:var(--ink-2)}
       Against the Table 1 baseline it rises from 0.704 to 0.929 on RulingBR, 0.600 to 0.779 on TuPy, 0.811 to 0.917 on
       B2WReviews and 0.806 to 0.863 on IntentPT. Matching accuracy by subsampling &mdash; discarding correct
       predictions from the more accurate model until the two match, against the same swept baseline as the main tables
-      &mdash; gives AURC 0.029 vs. 0.048 on B2WReviews, 0.250 vs. 0.283 on IntentPT, 0.307 vs. 0.450 on RulingBR and
-      0.103 vs. 0.188 on TuPy &mdash; better on all four. Restricted to ID inputs: 0.029 vs. 0.048, 0.157 vs. 0.182,
-      0.206 vs. 0.340 and 0.103 vs. 0.188. The ranking advantage survives when the accuracy advantage
+      &mdash; gives AURC 0.029 vs. 0.048 on B2WReviews, 0.252 vs. 0.283 on IntentPT, 0.308 vs. 0.450 on RulingBR and
+      0.102 vs. 0.167 on TuPy &mdash; better on all four. Restricted to ID inputs: 0.029 vs. 0.048, 0.157 vs. 0.182,
+      0.206 vs. 0.340 and 0.102 vs. 0.167. The random discard is repeated 50 times per fold. The ranking advantage survives when the accuracy advantage
       is removed entirely, on either population.</p>
       <p>But the improvement is a property of the learned geometry, and attributing it to our choice of confidence
       function &mdash; as an earlier framing of this work did &mdash; is not supported by the data.</p>
@@ -1147,7 +1147,8 @@ footer a{color:var(--ink-2)}
         <div class="tbl-wrap">
       <table>
         <caption><b>Table 6.</b> Certified coverage with a SetFit row, 5-shot, mean over 5 folds. SetFit is at the
-        library default, at its better score chosen on test; its own configuration sweep reaches 0.76 on B2W. An
+        library default, at the score validation AURC selects per corpus; its own configuration sweep, also selected on
+        validation, reaches 0.80 on B2W. An
         infeasible target &mdash; no threshold meets the risk target &mdash; is reported as 0.00 coverage, the same
         convention as Table 5.</caption>
         <thead><tr><th>r*</th><th>Method</th><th>B2W</th><th>Intent</th><th>Ruling</th><th>TuPy</th></tr></thead>
@@ -1368,7 +1369,7 @@ footer a{color:var(--ink-2)}
       </div>
     </div>
     <div class="narrow">
-      <p>Rejecting <em>near</em>-OOD from few-shot prototypes is only partial &mdash; FPR@95 stays high throughout. But
+      <p>Rejecting <em>near</em>-OOD from few-shot prototypes is only partial &mdash; FPR@95 stays above 0.77 on four of the five corpora, and only on RulingBR does it fall below one half (0.472). But
       that difficulty is specific to the class-holdout protocol, which produces near-OOD by construction: held-out and
       retained classes share domain, register and much of the vocabulary. Substituting text from an unrelated domain for
       the held-out classes, with the checkpoint untouched, raises AUROC to <b>0.986 on Eniac and 0.997 on RulingBR</b>.
@@ -1436,7 +1437,7 @@ footer a{color:var(--ink-2)}
       XLM-R still beats the swept baseline on nine of twelve corpora but its mean AURC is 0.194 against BERTimbau's
       0.074, with the losses concentrated on colloquial Brazilian review and social-media text (TuPy 0.550 vs. 0.068,
       Buscape 0.308 vs. 0.047) &mdash; precisely the register a Portuguese-specific encoder is best placed to serve.
-      Where the two agree they agree closely (RulingBR 0.075 vs. 0.073, IntentPT 0.114 vs. 0.117). And a <b>trained
+      On the two corpora where the encoders come close, the difference sits within the spread across folds (RulingBR 0.075 vs. 0.073, IntentPT 0.114 vs. 0.117). And a <b>trained
       read-out over a frozen space</b> buys roughly what supervised fine-tuning of the whole encoder does (mean 0.203
       against 0.219) but does not close the gap to episodic training, failing on exactly the specialist corpora where
       the centroid read-out fails.</p>
@@ -1891,7 +1892,7 @@ var CERT = [
 /* SetFit comparison: corpus -> [CE, SetFit, ours] at 5% and 10%; null = infeasible */
 var SETFIT = [
   ['B2WReviews', [0.59,0.40,1.00], [0.82,0.77,1.00]],
-  ['IntentPT',   [null,0.07,0.63], [0.24,0.21,0.86]],
+  ['IntentPT',   [null,0.06,0.63], [0.24,0.27,0.86]],
   ['RulingBR',   [null,0.07,0.94], [null,0.19,1.00]],
   ['TuPy',       [null,null,0.23], [null,null,0.65]]
 ];
@@ -1986,11 +1987,11 @@ var ATTR_REPR = [L.rFrozen, 'CE', 'SetFit', L.rProto];
 var ATTR = {
   aurc: [ [[0.014,0.217,0.498,0.229],[0.017,0.260,0.566,0.322]],
           [[0.048,0.283,0.450,0.167],[0.064,0.293,0.518,0.343]],
-          [[0.040,0.272,0.347,0.294],[0.028,0.268,0.354,0.413]],
+          [[0.041,0.272,0.347,0.294],[0.023,0.268,0.354,0.413]],
           [[0.004,0.115,0.072,0.068],[0.004,0.117,0.073,0.066]] ],
   auroc:[ [[0.848,0.829,0.688,0.651],[0.787,0.739,0.561,0.512]],
           [[0.811,0.806,0.704,0.600],[0.691,0.776,0.619,0.598]],
-          [[0.819,0.826,0.751,0.620],[0.844,0.828,0.737,0.538]],
+          [[0.806,0.826,0.751,0.620],[0.855,0.828,0.737,0.538]],
           [[0.898,0.876,0.936,0.781],[0.917,0.863,0.929,0.779]] ]
 };
 

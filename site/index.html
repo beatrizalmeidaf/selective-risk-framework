@@ -921,9 +921,9 @@ footer a{color:var(--ink-2)}
         <div class="tbl-wrap">
       <table>
         <caption><b>Tabela 4.</b> A grade 4&times;2 completa, 5-shot, média sobre 5 folds. &ldquo;Congelado&rdquo; é o
-        melhor entre BGE-M3 e multilingual-E5 por corpus, escolhido no teste; o CE está no melhor de três taxas de
-        aprendizado e o SetFit no melhor de três configurações de treino em B2W e TuPy, também escolhidos no teste
-        &mdash; vantagens oraculares concedidas aos baselines e não a nós. Mudar a representação move os números; mudar
+        melhor entre BGE-M3 e multilingual-E5 por corpus, escolhido no teste, e o CE está no melhor de três taxas de
+        aprendizado, também escolhida no teste &mdash; vantagens oraculares concedidas aos baselines, nunca a nós. O
+        SetFit está no melhor de três configurações em B2W e TuPy, escolhida pela AURC de <em>validação</em>. Mudar a representação move os números; mudar
         o escore dentro de uma representação quase não move.</caption>
         <thead><tr><th>Repr.</th><th>Escore</th><th>B2W</th><th>Intent</th><th>Ruling</th><th>TuPy</th></tr></thead>
         <tbody>
@@ -1059,9 +1059,9 @@ footer a{color:var(--ink-2)}
       Contra o baseline da Tabela 1, ela sobe de 0,704 para 0,929 no RulingBR, 0,600 para 0,779 no TuPy, 0,811 para
       0,917 no B2WReviews e 0,806 para 0,863 no IntentPT. Parear a acurácia por subamostragem, descartando
       acertos do modelo mais acurado até igualar o outro e comparando contra o mesmo baseline varrido das tabelas
-      principais, dá AURC 0,029 vs. 0,048 no B2WReviews, 0,250 vs. 0,283 no IntentPT, 0,307 vs. 0,450 no RulingBR e
-      0,103 vs. 0,188 no TuPy &mdash; melhor nos quatro. Restringindo às entradas ID: 0,029 vs. 0,048, 0,157 vs. 0,182,
-      0,206 vs. 0,340 e 0,103 vs. 0,188. A vantagem de ordenação sobrevive à
+      principais, dá AURC 0,029 vs. 0,048 no B2WReviews, 0,252 vs. 0,283 no IntentPT, 0,308 vs. 0,450 no RulingBR e
+      0,102 vs. 0,167 no TuPy &mdash; melhor nos quatro. Restringindo às entradas ID: 0,029 vs. 0,048, 0,157 vs. 0,182,
+      0,206 vs. 0,340 e 0,102 vs. 0,167. O descarte aleatório é repetido 50 vezes por fold. A vantagem de ordenação sobrevive à
       remoção completa da vantagem de acurácia, em qualquer das duas populações.</p>
       <p>Mas a melhoria é propriedade da geometria aprendida, e atribuí-la à nossa escolha de função de confiança
       &mdash; como fazia um enquadramento anterior desse trabalho &mdash; não se sustenta nos dados.</p>
@@ -1149,8 +1149,8 @@ footer a{color:var(--ink-2)}
         <div class="tbl-wrap">
       <table>
         <caption><b>Tabela 6.</b> Cobertura certificada com uma linha para o SetFit, 5-shot, média sobre 5 folds. O
-        SetFit está na configuração padrão da biblioteca, no seu melhor escore escolhido no teste; sua própria varredura
-        de configuração alcança 0,76 no B2W. Um alvo infactível &mdash; nenhum limiar satisfaz o risco-alvo &mdash; é
+        SetFit está na configuração padrão da biblioteca, no escore que a AURC de validação seleciona por corpus; sua própria varredura
+        de configuração alcança 0,80 no B2W. Um alvo infactível &mdash; nenhum limiar satisfaz o risco-alvo &mdash; é
         reportado como cobertura 0,00, mesma convenção da Tabela 5.</caption>
         <thead><tr><th>r*</th><th>Método</th><th>B2W</th><th>Intent</th><th>Ruling</th><th>TuPy</th></tr></thead>
         <tbody>
@@ -1373,8 +1373,8 @@ footer a{color:var(--ink-2)}
       </div>
     </div>
     <div class="narrow">
-      <p>Rejeitar OOD <em>próximo</em> a partir de protótipos few-shot é apenas parcial &mdash; a FPR@95 permanece alta
-      em toda a tabela. Mas essa dificuldade é específica do protocolo de retenção de classes, que produz OOD próximo
+      <p>Rejeitar OOD <em>próximo</em> a partir de protótipos few-shot é apenas parcial &mdash; a FPR@95 fica acima de 0,77 em quatro dos cinco corpora, e
+      só no RulingBR cai abaixo da metade (0,472). Mas essa dificuldade é específica do protocolo de retenção de classes, que produz OOD próximo
       por construção: classes retidas e mantidas compartilham domínio, registro e boa parte do vocabulário. Substituir
       as classes retidas por texto de um domínio não relacionado, sem tocar no checkpoint, eleva a AUROC a <b>0,986 no
       Eniac e 0,997 no RulingBR</b>. O OOD distante está praticamente saturado para essa geometria.</p>
@@ -1441,7 +1441,7 @@ footer a{color:var(--ink-2)}
       encoder</b>: o XLM-R ainda supera o baseline varrido em nove dos doze corpora, mas seu AURC médio é 0,194 contra
       0,074 do BERTimbau, com as perdas concentradas em texto coloquial brasileiro de resenhas e redes sociais (TuPy
       0,550 vs. 0,068; Buscape 0,308 vs. 0,047) &mdash; justamente o registro que um encoder específico do português
-      melhor atende. Onde os dois concordam, concordam de perto (RulingBR 0,075 vs. 0,073; IntentPT 0,114 vs. 0,117). E
+      melhor atende. Nos dois corpora em que os encoders se aproximam, a diferença fica dentro da dispersão entre folds (RulingBR 0,075 vs. 0,073; IntentPT 0,114 vs. 0,117). E
       uma <b>leitura treinada sobre um espaço congelado</b> rende aproximadamente o que rende o ajuste fino
       supervisionado do encoder inteiro (média 0,203 contra 0,219), mas não fecha a distância até o treino episódico,
       falhando exatamente nos corpora especializados em que a leitura por centroides falha.</p>
@@ -1899,7 +1899,7 @@ var CERT = [
 /* SetFit comparison: corpus -> [CE, SetFit, ours] at 5% and 10%; null = infeasible */
 var SETFIT = [
   ['B2WReviews', [0.59,0.40,1.00], [0.82,0.77,1.00]],
-  ['IntentPT',   [null,0.07,0.63], [0.24,0.21,0.86]],
+  ['IntentPT',   [null,0.06,0.63], [0.24,0.27,0.86]],
   ['RulingBR',   [null,0.07,0.94], [null,0.19,1.00]],
   ['TuPy',       [null,null,0.23], [null,null,0.65]]
 ];
@@ -1994,11 +1994,11 @@ var ATTR_REPR = [L.rFrozen, 'CE', 'SetFit', L.rProto];
 var ATTR = {
   aurc: [ [[0.014,0.217,0.498,0.229],[0.017,0.260,0.566,0.322]],
           [[0.048,0.283,0.450,0.167],[0.064,0.293,0.518,0.343]],
-          [[0.040,0.272,0.347,0.294],[0.028,0.268,0.354,0.413]],
+          [[0.041,0.272,0.347,0.294],[0.023,0.268,0.354,0.413]],
           [[0.004,0.115,0.072,0.068],[0.004,0.117,0.073,0.066]] ],
   auroc:[ [[0.848,0.829,0.688,0.651],[0.787,0.739,0.561,0.512]],
           [[0.811,0.806,0.704,0.600],[0.691,0.776,0.619,0.598]],
-          [[0.819,0.826,0.751,0.620],[0.844,0.828,0.737,0.538]],
+          [[0.806,0.826,0.751,0.620],[0.855,0.828,0.737,0.538]],
           [[0.898,0.876,0.936,0.781],[0.917,0.863,0.929,0.779]] ]
 };
 
