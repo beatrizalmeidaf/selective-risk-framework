@@ -1124,7 +1124,11 @@ footer a{color:var(--ink-2)}
       0,278. O MSP não admite limiar viável a 5% em seis dos doze &mdash; Brands, Eniac, HateBR, IntentPT, RulingBR e
       TuPy &mdash; enquanto o nosso certifica cobertura não nula em quatro desses seis. As duas exceções são os dois
       corpora em que todo método colapsa, e os reportamos em vez de omitir: <em>um certificado que devolve cobertura
-      zero é o procedimento se comportando corretamente diante de um escore que não sustenta a meta.</em></p>
+      zero é o procedimento se comportando corretamente.</em> As duas linhas zeram, porém, por motivos distintos. No
+      Eniac o escore não sustenta a meta, com m&thinsp;=&thinsp;580, folgadamente acima do piso. No Brands o conjunto de
+      calibração tem m&thinsp;=&thinsp;45, abaixo do piso binomial de m&thinsp;&ge;&thinsp;97 a 5% de risco: ali a
+      cobertura zera por falta de amostra, e um classificador perfeito zeraria igual. Reamostrando a distribuição de
+      escores observada até m&thinsp;=&thinsp;500, o mesmo modelo certificaria 0,95.</p>
       <p>A inviabilidade é propriedade dos valores de confiança, não da busca: varrendo todo limiar do conjunto de
       calibração, o limite mais apertado que o MSP alcança é <var>b</var>*&thinsp;=&thinsp;0,211 no RulingBR e 0,068 no
       IntentPT. Cabe declarar a correção usada nessa varredura: ela mantém
@@ -1874,7 +1878,7 @@ var COV = {
   'Olist':       {k5r5:[0.34,0.88], k5r10:[0.75,1.00], k10r5:[0.48,0.91], k10r10:[0.81,1.00]},
   'RePro':       {k5r5:[0.25,1.00], k5r10:[0.54,1.00], k10r5:[0.62,1.00], k10r10:[0.93,1.00]},
   'HateBR':      {k5r5:[null,0.73], k5r10:[null,0.94], k10r5:[null,0.71], k10r10:[0.07,0.93]},
-  'TuPy':        {k5r5:[null,0.39], k5r10:[null,0.61], k10r5:[null,0.27], k10r10:[null,0.53]},
+  'TuPy':        {k5r5:[null,0.39], k5r10:[null,0.61], k10r5:[null,0.27], k10r10:[0.15,0.53]},
   'Eniac':       {k5r5:[null,null], k5r10:[null,null], k10r5:[null,null], k10r10:[null,0.02]},
   'Recognasumm': {k5r5:[null,0.27], k5r10:[null,0.43], k10r5:[null,0.29], k10r10:[0.01,0.45]},
   'IntentPT':    {k5r5:[null,0.25], k5r10:[0.04,0.45], k10r5:[null,0.18], k10r10:[0.14,0.43]},
