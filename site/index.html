@@ -406,7 +406,7 @@ footer a{color:var(--ink-2)}
   <div class="wrap">
     <div class="venue">Artigo longo</div>
     <h1 class="title">Classificação Seletiva em Texto Few-Shot:
-      <em>O Ganho Vem da Representação, Não do Escore de Confiança</em>
+      <em>O Efeito da Representação sobre as Heurísticas de Confiança</em>
     </h1>
     <!-- Bloco de autoria da versão final entra aqui; omitido enquanto a submissão
          está anonimizada em duas vias (ver acl_latex.tex). -->
@@ -1330,7 +1330,7 @@ footer a{color:var(--ink-2)}
       <div class="panel-body hide" id="kshot-table">
         <div class="tbl-wrap">
           <table>
-            <caption><b>Tabela 17.</b> AURC &darr; versus orçamento <var>K</var>, média &plusmn; desvio sobre 5 folds. O MSP está na configuração publicada nos três orçamentos. A célula do RePro a 5-shot é a média de quatro folds: no fold 01 dessa execução os relatórios arquivados trazem a acurácia invertida em relação aos próprios logits (0,242 contra 0,758), e ele é excluído &mdash; a mesma exclusão da Tabela 2.</caption>
+            <caption><b>Tabela 17.</b> AURC &darr; versus orçamento <var>K</var> nos doze corpora, média &plusmn; desvio sobre 5 folds. O MSP está na configuração publicada nos três orçamentos. Todas as células são recomputadas a partir dos logits de teste salvos, o que dispensa a exclusão de fold descrita na Tabela 2: por isso a célula do RePro a 5-shot é 0,083 sobre cinco folds, e não 0,070 sobre quatro.</caption>
             <thead><tr><th>Corpus / método</th><th>1-shot</th><th>5-shot</th><th>10-shot</th></tr></thead>
             <tbody id="ks-tbody"></tbody>
           </table>
@@ -1338,10 +1338,12 @@ footer a{color:var(--ink-2)}
       </div>
     </div>
     <div class="narrow">
-      <p>A vantagem é maior sob escassez extrema, coerente com o mecanismo: em <var>K</var>&thinsp;=&thinsp;1 o
-      protótipo não adaptado <em>é</em> o único embedding de suporte, sem média para amortecer o ruído da representação.
-      O RulingBR tem a maior margem nos três regimes; a margem relativa se estreita de 1 para 10 exemplos nos corpora de
-      resenhas, à medida que o próprio MSP se beneficia de mais dados.</p>
+      <p>Nas 36 células da grade, a AURC do nosso método é menor que a do MSP, com redução mediana de 73,1% a
+      1-shot, 78,2% a 5-shot e 59,8% a 10-shot. A vantagem é maior sob escassez extrema, coerente com o mecanismo: em
+      <var>K</var>&thinsp;=&thinsp;1 o protótipo não adaptado <em>é</em> o único embedding de suporte, sem média para
+      amortecer o ruído da representação. A maior margem absoluta é a do RulingBR a 1 e a 5 exemplos (0,68 e 0,41 de
+      AURC) e a do Eniac a 10 (0,18). A leitura de que a margem encolhe com o orçamento vale para a diferença absoluta;
+      em razão relativa a ordenação não é monótona.</p>
     </div>
 
     <h3 class="narrow">Detecção de OOD sob retenção de classes</h3>
@@ -2003,9 +2005,18 @@ var ATTR = {
 };
 
 var KSHOT = [
-  {name:'RePro',      max:0.60, msp:[[.248,.066],[.070,.021],[.032,.014]], ours:[[.017,.006],[.008,.002],[.007,.003]]},
-  {name:'B2WReviews', max:0.35, msp:[[.233,.073],[.056,.021],[.022,.004]], ours:[[.020,.011],[.004,.001],[.004,.001]]},
-  {name:'RulingBR',   max:0.90, msp:[[.775,.081],[.481,.113],[.156,.091]], ours:[[.099,.097],[.073,.069],[.072,.070]]}
+  {name:'B2WReviews',   max:0.35, msp:[[.233,.073],[.056,.021],[.022,.004]], ours:[[.020,.011],[.004,.001],[.004,.001]]},
+  {name:'Brands',       max:0.25, msp:[[.129,.085],[.031,.018],[.014,.014]], ours:[[.005,.007],[.003,.004],[.005,.008]]},
+  {name:'Buscape',      max:0.75, msp:[[.450,.254],[.147,.057],[.115,.041]], ours:[[.210,.093],[.047,.011],[.031,.007]]},
+  {name:'Olist',        max:0.45, msp:[[.241,.162],[.064,.020],[.053,.009]], ours:[[.133,.105],[.016,.003],[.016,.003]]},
+  {name:'RePro',        max:0.35, msp:[[.248,.066],[.083,.033],[.032,.014]], ours:[[.017,.006],[.008,.002],[.007,.003]]},
+  {name:'HateBR',       max:0.50, msp:[[.383,.075],[.321,.178],[.178,.082]], ours:[[.062,.024],[.024,.003],[.025,.002]]},
+  {name:'TuPy',         max:0.65, msp:[[.349,.275],[.377,.250],[.135,.051]], ours:[[.118,.034],[.068,.022],[.072,.022]]},
+  {name:'Eniac',        max:0.85, msp:[[.719,.094],[.519,.075],[.419,.067]], ours:[[.328,.070],[.255,.050],[.243,.049]]},
+  {name:'Recognasumm',  max:0.70, msp:[[.599,.057],[.347,.027],[.292,.015]], ours:[[.263,.097],[.136,.040],[.132,.042]]},
+  {name:'IntentPT',     max:0.65, msp:[[.609,.032],[.308,.035],[.218,.029]], ours:[[.138,.020],[.117,.027],[.113,.026]]},
+  {name:'MMLU-PT-BR',   max:0.60, msp:[[.493,.086],[.282,.068],[.239,.057]], ours:[[.153,.039],[.134,.035],[.134,.036]]},
+  {name:'RulingBR',     max:0.90, msp:[[.776,.081],[.482,.113],[.156,.091]], ours:[[.099,.097],[.073,.069],[.072,.070]]}
 ];
 
 var LADDER = [
