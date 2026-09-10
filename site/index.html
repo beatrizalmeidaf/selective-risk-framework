@@ -434,7 +434,7 @@ footer a{color:var(--ink-2)}
     <div class="stats">
       <div class="stat"><b>12&thinsp;/&thinsp;12</b><span>corpora em que a geometria prototípica supera <em>todos</em> os baselines post-hoc a 5-shot</span></div>
       <div class="stat"><b>&minus;67%</b><span>redução mediana de AURC contra o baseline mais forte sob varredura oracular</span></div>
-      <div class="stat"><b>24&times;</b><span>quanto a <em>representação</em> move o desempenho a mais que o <em>escore</em>, em E-AURC (mediana de 0,056 contra 0,0023)</span></div>
+      <div class="stat"><b>24&times;</b><span>quanto a <em>representação</em> move o desempenho a mais que um <em>escore</em> que lê a mesma geometria, em E-AURC (mediana de 0,056 contra 0,0023); sobre os oito escores avaliados, 1,2&times;</span></div>
       <div class="stat"><b>0,91</b><span>cobertura certificada a 5% de risco em decisões judiciais, sob calibração independente da seleção do modelo, onde o baseline ajustado é inviável</span></div>
       <div class="stat"><b>15,2%</b><span>risco de fato realizado por esse limiar certificado a 5% quando classes não vistas entram no fluxo</span></div>
     </div>
@@ -449,14 +449,14 @@ footer a{color:var(--ink-2)}
       <h2>Origem do ganho de desempenho</h2>
       <p class="lede">Esse é um <b>estudo de medição e atribuição</b>, não uma proposta de novos componentes de modelo.
       Classificadores few-shot apresentam desempenho subótimo na abstenção, e a área respondeu projetando escores de confiança cada vez melhores sobre
-      uma representação tomada como dada. Avaliamos dois escores sobre quatro representações e o efeito é carregado
+      uma representação tomada como dada. Avaliamos dois escores sobre quatro representações &mdash; e, depois, oito escores sobre a representação prototípica &mdash; e o efeito é carregado
       quase inteiramente pela representação.</p>
     </div>
 
     <div class="abstract narrow">
       <span class="lbl">Resumo</span>
       <p>Modelos de classificação de texto em regime <em>few-shot</em> ordenam mal os próprios erros: sob extrema escassez de dados, as estimativas de confiança não separam predições corretas de incorretas o bastante para sustentar cobertura útil sob restrição de risco. Avaliamos doze <em>corpora</em> em português com orçamentos de 1 a 10 exemplos por classe, contra sete <em>baselines post-hoc</em> &mdash; o mais forte deles sob busca oracular de hiperparâmetros. O <em>ajuste fino prototípico episódico</em> desloca essa fronteira: a AURC cai em uma mediana de 67% no cenário 5-shot. Sob um conjunto de calibração disjunto também da seleção do modelo, o método certifica 0,91 de cobertura para um risco-alvo de 5% em textos de decisões judiciais, cenário em que o <em>baseline</em> ajustado não admite qualquer limiar viável.</p>
-      <p>Um experimento fatorial 4&times;2 separa representação e estimador de confiança, e localiza o efeito na representação. Medido em grandezas que descontam a acurácia, trocar a representação move o desempenho de 6 a 24 vezes mais do que trocar o escore, conforme a grandeza: mediana de 0,056 contra 0,0023 em E-AURC e de 0,091 contra 0,014 em AUROC correto-vs-incorreto, nos doze <em>corpora</em>. Duas ressalvas qualificam o achado. As intervenções na representação não são intercambiáveis &mdash; o SetFit, mesmo na configuração escolhida por varredura própria sobre a AURC de validação, fica bem atrás e sofre degradação severa a um exemplo por classe. E o certificado limita o risco apenas <em>in-distribution</em>: em um fluxo contendo classes não vistas, o mesmo limiar chega a produzir erro empírico de 15,2% frente ao risco-alvo de 5%, no pior dos cinco <em>corpora</em> avaliados.</p>
+      <p>Um experimento fatorial 4&times;2 separa representação e estimador de confiança, e localiza o efeito na representação. Medido em grandezas que descontam a acurácia, trocar a representação move o desempenho de 6 a 24 vezes mais do que trocar o escore, conforme a grandeza: mediana de 0,056 contra 0,0023 em E-AURC e de 0,091 contra 0,014 em AUROC correto-vs-incorreto, nos doze <em>corpora</em>. Essa faixa é medida contra os estimadores que leem a geometria prototípica: avaliados ali os sete escores post-hoc da grade, quatro deles &mdash; privados pelo regime do insumo de que precisam &mdash; ficam atrás e estreitam a razão a cerca de 1,2. Duas ressalvas qualificam o achado. As intervenções na representação não são intercambiáveis &mdash; o SetFit, mesmo na configuração escolhida por varredura própria sobre a AURC de validação, fica bem atrás e sofre degradação severa a um exemplo por classe. E o certificado limita o risco apenas <em>in-distribution</em>: em um fluxo contendo classes não vistas, o mesmo limiar chega a produzir erro empírico de 15,2% frente ao risco-alvo de 5%, no pior dos cinco <em>corpora</em> avaliados.</p>
     </div>
 
     <div class="cards">

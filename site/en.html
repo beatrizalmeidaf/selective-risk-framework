@@ -434,7 +434,7 @@ footer a{color:var(--ink-2)}
     <div class="stats">
       <div class="stat"><b>12&thinsp;/&thinsp;12</b><span>corpora where prototypical geometry beats <em>every</em> post-hoc baseline at 5-shot</span></div>
       <div class="stat"><b>&minus;67%</b><span>median AURC reduction against the strongest baseline under an oracle sweep</span></div>
-      <div class="stat"><b>24&times;</b><span>how much more the <em>representation</em> moves performance than the <em>score</em>, in E-AURC (median 0.056 against 0.0023)</span></div>
+      <div class="stat"><b>24&times;</b><span>how much more the <em>representation</em> moves performance than a <em>score</em> reading the same geometry, in E-AURC (median 0.056 against 0.0023); across all eight scores evaluated, 1.2&times;</span></div>
       <div class="stat"><b>0.91</b><span>certified coverage at 5% risk on court rulings, under calibration independent of model selection, where the tuned baseline is infeasible</span></div>
       <div class="stat"><b>15.2%</b><span>risk actually realised by that 5%-certified threshold once unseen classes enter the stream</span></div>
     </div>
@@ -449,14 +449,14 @@ footer a{color:var(--ink-2)}
       <h2>Where does the gain actually come from?</h2>
       <p class="lede">This is a <b>measurement and attribution study</b>, not a proposal of new model components.
       Few-shot text classifiers abstain poorly, and the field has responded by designing better confidence scores over
-      a representation taken as given. We evaluate two scores over four representations and find the effect is carried
+      a representation taken as given. We evaluate two scores over four representations &mdash; and then eight scores over the prototypical representation &mdash; and find the effect is carried
       almost entirely by the representation.</p>
     </div>
 
     <div class="abstract narrow">
       <span class="lbl">Abstract</span>
       <p>Few-shot text classifiers rank their own errors badly: under severe data scarcity, confidence estimates do not separate correct from incorrect predictions well enough to sustain useful coverage under a risk constraint. We evaluate twelve Portuguese <em>corpora</em> at budgets of 1 to 10 examples per class, against seven <em>post-hoc</em> baselines &mdash; the strongest of them under an oracle hyperparameter sweep. <em>Episodic prototypical fine-tuning</em> shifts that frontier: AURC falls by a median of 67% at 5-shot. On a calibration set disjoint from model selection as well, the method certifies 0.91 coverage at a 5% target risk on court rulings, where the tuned baseline admits no feasible threshold at all.</p>
-      <p>A 4&times;2 factorial experiment separates representation from confidence estimator, and locates the effect in the representation. Measured on quantities that discount accuracy, changing the representation moves performance 6 to 24 times more than changing the score, depending on the quantity: a median of 0.056 against 0.0023 in E-AURC and of 0.091 against 0.014 in correct-vs-incorrect AUROC, across the twelve <em>corpora</em>. Two caveats qualify the finding. Representation interventions are not interchangeable &mdash; SetFit, even at the configuration chosen by its own sweep on validation AURC, trails well behind and degrades severely at one example per class. And the certificate bounds risk only <em>in-distribution</em>: in a stream containing unseen classes, the same threshold reaches 15.2% empirical error against the 5% target, on the worst of the five <em>corpora</em> evaluated.</p>
+      <p>A 4&times;2 factorial experiment separates representation from confidence estimator, and locates the effect in the representation. Measured on quantities that discount accuracy, changing the representation moves performance 6 to 24 times more than changing the score, depending on the quantity: a median of 0.056 against 0.0023 in E-AURC and of 0.091 against 0.014 in correct-vs-incorrect AUROC, across the twelve <em>corpora</em>. That range is measured against the estimators that read the prototypical geometry: evaluating all seven post-hoc scores of the grid there, four of them &mdash; denied by the regime the input they need &mdash; fall behind and narrow the ratio to about 1.2. Two caveats qualify the finding. Representation interventions are not interchangeable &mdash; SetFit, even at the configuration chosen by its own sweep on validation AURC, trails well behind and degrades severely at one example per class. And the certificate bounds risk only <em>in-distribution</em>: in a stream containing unseen classes, the same threshold reaches 15.2% empirical error against the 5% target, on the worst of the five <em>corpora</em> evaluated.</p>
     </div>
 
     <div class="cards">
