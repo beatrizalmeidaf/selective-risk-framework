@@ -456,7 +456,7 @@ footer a{color:var(--ink-2)}
     <div class="abstract narrow">
       <span class="lbl">Abstract</span>
       <p>Few-shot text classifiers rank their own errors badly: under severe data scarcity, confidence estimates do not separate correct from incorrect predictions well enough to sustain useful coverage under a risk constraint. We evaluate twelve Portuguese <em>corpora</em> at budgets of 1 to 10 examples per class, against seven <em>post-hoc</em> baselines &mdash; the strongest of them under an oracle hyperparameter sweep. <em>Episodic prototypical fine-tuning</em> shifts that frontier: AURC falls by a median of 67% at 5-shot. On a calibration set disjoint from model selection as well, the method certifies 0.91 coverage at a 5% target risk on court rulings, where the tuned baseline admits no feasible threshold at all.</p>
-      <p>A 4&times;2 factorial experiment separates representation from confidence estimator, and locates the effect in the representation. Measured on quantities that discount accuracy, changing the representation moves performance 6 to 24 times more than changing the score, depending on the quantity: a median of 0.056 against 0.0023 in E-AURC and of 0.091 against 0.014 in correct-vs-incorrect AUROC, across the twelve <em>corpora</em>. Two caveats qualify the finding. Representation interventions are not interchangeable &mdash; SetFit, even tuned on the test set, trails well behind and degrades severely at one example per class. And the certificate bounds risk only <em>in-distribution</em>: in a stream containing unseen classes, the same threshold yields 15.2% empirical error against the 5% target.</p>
+      <p>A 4&times;2 factorial experiment separates representation from confidence estimator, and locates the effect in the representation. Measured on quantities that discount accuracy, changing the representation moves performance 6 to 24 times more than changing the score, depending on the quantity: a median of 0.056 against 0.0023 in E-AURC and of 0.091 against 0.014 in correct-vs-incorrect AUROC, across the twelve <em>corpora</em>. Two caveats qualify the finding. Representation interventions are not interchangeable &mdash; SetFit, even at the configuration chosen by its own sweep on validation AURC, trails well behind and degrades severely at one example per class. And the certificate bounds risk only <em>in-distribution</em>: in a stream containing unseen classes, the same threshold reaches 15.2% empirical error against the 5% target, on the worst of the five <em>corpora</em> evaluated.</p>
     </div>
 
     <div class="cards">
@@ -601,8 +601,7 @@ footer a{color:var(--ink-2)}
       scarcity (5-shot), and that the confidence function the field has been optimising is not what carries the
       effect.</p>
       <p class="src">Scope, as everywhere on this page: the detailed grid covers four corpora, though the ladder it
-      summarises is measured on all twelve; its baseline-encoder prototypes are built from validation examples rather
-      than the training support, a deviation that favours the baseline. The ladder is monotone by median over the twelve
+      summarises is measured on all twelve; its CE-encoder prototypes were built from validation examples rather than the training support, because the original checkpoints were not kept; we retrained the baseline saving the support features and the grid ordering does not change &mdash; over the CE representation, cosine remains worse than MSP on all four corpora. The ladder is monotone by median over the twelve
       Portuguese corpora and by mean over the eight English ones, not corpus by corpus.</p>
     </div>
   </div>
@@ -781,6 +780,19 @@ footer a{color:var(--ink-2)}
       coefficient of variation sits between 0.11 and 0.32 and the mean describes the distribution well; Brands is the
       other skewed case, but because two folds have AURC exactly zero, not because of a bad tail. The AURC spread does
       not carry over to certified coverage: on RulingBR it is 0.943, 0.997, 0.956, 0.875 and 0.943 fold by fold.</p>
+      <p><b>That dispersion belongs to the data, not the optimiser &mdash; and optimisation variance, once measured, is
+      not negligible.</b> We retrained with a second seed on all twelve corpora and a third on three of them, holding
+      the support set fixed, so that only initialisation and episodic sampling vary. On IntentPT and RulingBR the
+      ordering of the five folds by AURC is <em>identical</em> across the three seeds: the hard fold stays hard under a
+      different initialisation. At the median across the twelve, the shift between seeds is <b>0.0015 AURC, or 9.7% of
+      the between-fold standard deviation</b> &mdash; but the range runs from 0.3% to <b>100.5% on Buscape</b>, where
+      optimisation noise equals the between-fold spread. Recognasumm is the second such case, at 0.0142.</p>
+      <p>Two consequences we would rather record than omit. The shift between seeds <b>exceeds the effect of switching
+      the score on four of the twelve corpora</b>, so the 0.0023 denominator of the representation/score ratio should
+      be read as an upper bound on the design's resolution, not as a measurement of the effect. And the numerator's
+      margin is not uniform: the ratio between the representation effect and the seed shift has a median of 51 but
+      <b>falls to 3.5 on Buscape</b>. An earlier version of this analysis, on three corpora only, reported a minimum of
+      19 &mdash; extending it to twelve gave a worse result, and it is the twelve-corpus one we report.</p>
     </div>
 
     <h3 class="narrow">All seven post-hoc baselines</h3>
@@ -971,10 +983,23 @@ footer a{color:var(--ink-2)}
       similarity vector over the same prototypes, so a small gap is partly expected by construction. The score-variant
       appendix widens the set to five estimators, including X-Mahalanobis, which reads the same geometry through
       cross-layer covariance and is the only one to stand apart &mdash; and even it sits 0.0096 from cosine, an order
-      of magnitude below the representation effect. The structurally distinct scores of the full grid (Energy,
-      <var>k</var>NN, Mahalanobis, GradNorm, ReAct, ConjNorm) were never evaluated over the prototypical
-      representation. What the data support is convergence among estimators read over an adapted geometry, not
-      indifference to any post-hoc score whatsoever.</p>
+      of magnitude below the representation effect. All seven scores of the full grid have now
+      been evaluated over the prototypical representation, and the result separates three claims.</p>
+      <p><b>Energy and ReAct converge; the four structurally distinct ones do not.</b> The Energy estimator demonstrates a median difference of +0.0003 relative to
+      cosine across all twelve corpora, while ReAct exhibits a +0.0001 margin, resulting in a spread of 0.0033 among the four estimators that leverage prototypical geometry
+      &mdash; comparable in magnitude to the 0.0023 margin of the cosine/MSP pairing. Conversely, the four structurally distinct scores remain behind:
+      <b><var>k</var>NN at +0.0439 from cosine at the median, ConjNorm at +0.0101, Mahalanobis at +0.0097 and GradNorm at +0.0069</b>, each worse than cosine on eleven or
+      twelve of the twelve corpora. Given that all preserve the prototypical argmax output, these discrepancies constitute E-AURC differences, directly comparable to the 0.056
+      representation effect. When considering the spread across all eight estimators, <b>the impact ratio between representation and score is reduced from 24 to approximately
+      1.2</b>.</p>
+      <p><b>Adapting the representation halves the price of choosing badly.</b> The <em>same</em> seven post-hoc scores show a median spread of <b>0.1060 AURC over the
+      cross-entropy encoder and 0.0460 over the prototypical representation &mdash; a 2.3-fold reduction</b>. This is the attribution-ladder claim verified outside the family of
+      scores that motivated it, rather than only among readings of the same similarity vector.</p>
+      <p>Two observations bound this counterexample without invalidating it. The deficit is neither uniform nor a property of the latent representation: Mahalanobis and ConjNorm
+      actually beat cosine on RulingBR (0.071 against 0.073) and fall well behind on Buscape (0.136 and 0.121 against 0.057). What the four share is dependence on an input the
+      regime rations &mdash; a dense bank for <var>k</var>NN, an estimable covariance for Mahalanobis, a sampled partition constant for ConjNorm &mdash; and all must estimate it
+      from <var>CK</var> support examples. Consequently, the empirical evidence supports the narrow claim: over a task-adapted geometry, estimators provided with sufficient
+      operational conditions converge with one another and the cost of a bad choice halves &mdash; without the choice becoming indifferent.</p>
     </div>
 
     <h3 class="narrow">The ladder: how much the score matters, by how much the space was adapted</h3>
@@ -1194,7 +1219,7 @@ footer a{color:var(--ink-2)}
     </div>
 
     <div class="note narrow">
-      <h4>We would now recommend CRC as the default, with SGR as the conservative fallback</h4>
+      <h4>CRC or SGR: the choice is conditional, not a general recommendation</h4>
       <p>CRC obtains its advantage by not paying for the threshold search, which is valid only when selective risk is
       monotone in the threshold &mdash; a condition selective risk does not guarantee in general. That condition is
       testable on the calibration splits we already hold, so we measured it rather than assuming it: over 200 threshold
@@ -1443,7 +1468,7 @@ footer a{color:var(--ink-2)}
       XLM-R still beats the swept baseline on nine of twelve corpora but its mean AURC is 0.194 against BERTimbau's
       0.074, with the losses concentrated on colloquial Brazilian review and social-media text (TuPy 0.550 vs. 0.068,
       Buscape 0.308 vs. 0.047) &mdash; precisely the register a Portuguese-specific encoder is best placed to serve.
-      On the two corpora where the encoders come close, the difference sits within the spread across folds (RulingBR 0.075 vs. 0.073, IntentPT 0.114 vs. 0.117). And a <b>trained
+      On the three corpora where the encoders come close, the difference sits within the spread across folds (Recognasumm 0.137 vs. 0.136, RulingBR 0.075 vs. 0.073, IntentPT 0.114 vs. 0.117). And a <b>trained
       read-out over a frozen space</b> buys roughly what supervised fine-tuning of the whole encoder does (mean 0.203
       against 0.219) but does not close the gap to episodic training, failing on exactly the specialist corpora where
       the centroid read-out fails.</p>
@@ -1568,10 +1593,10 @@ footer a{color:var(--ink-2)}
       the evaluation split and is an upper bound on what SGR could certify over that same population. The two are not
       comparable term by term and neither bounds the other, since they are measured over different populations.</p>
       <p>The OOD protocol is class holdout, which produces <em>near</em>-OOD by construction and covers neither far-OOD
-      nor temporal or adversarial drift. All runs use a single seed (42), so the standard deviations measure sensitivity
-      to the data partition and not to initialisation. The detailed grid covers four corpora, though the ladder it
-      summarises is measured on all twelve, and its CE-encoder prototypes are built from validation examples rather than
-      the training support. The prompted-LLM comparison covers one model size and one elicitation protocol; the LLM has
+      nor temporal or adversarial drift. The main tables use a single seed (42), so the standard deviations there measure
+      sensitivity to the data partition and not to initialisation; we measured what that omits by retraining with a
+      second seed on all twelve corpora, and a third on three of them (see below). The detailed grid covers four corpora, though the ladder it
+      summarises is measured on all twelve, and its CE-encoder prototypes were built from validation examples rather than the training support &mdash; a gap we closed by retraining the baseline with the support features saved, without changing the grid ordering. The prompted-LLM comparison covers one model size and one elicitation protocol; the LLM has
       very likely seen these public corpora in pretraining, a confound that favours it. Both base-sized encoders are
       BERT-family, and whether the gains persist with larger encoders remains open.</p>
     </div>
@@ -1677,7 +1702,7 @@ make test-baselines                 <span class="c"># scorer unit tests</span></
           <tr><td>Episodes</td><td style="text-align:left">100 per epoch; <var>K</var>∈{1,5,10} support, ≤25 query per class</td></tr>
           <tr><td>Adapter</td><td style="text-align:left"><var>ρ</var>=15, <var>τ</var><sub>tr</sub>=20, <var>τ</var>=15, <var>t</var>=5 — all found dispensable</td></tr>
           <tr><td>SGR</td><td style="text-align:left"><var>δ</var>=0.05, <var>r</var>*∈{0.05, 0.10}, binary search over calibration quantiles</td></tr>
-          <tr><td>Protocol</td><td style="text-align:left">5 folds, single seed (42); ≈40% of classes held out as OOD on multiclass corpora (≈20% of test instances)</td></tr>
+          <tr><td>Protocol</td><td style="text-align:left">5 folds; seed 42 in the main tables, with a second seed on all twelve corpora and a third on three of them to measure optimisation variance; ≈40% of classes held out as OOD on multiclass corpora (≈20% of test instances)</td></tr>
         </tbody>
       </table>
     </div>

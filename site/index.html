@@ -456,7 +456,7 @@ footer a{color:var(--ink-2)}
     <div class="abstract narrow">
       <span class="lbl">Resumo</span>
       <p>Modelos de classificação de texto em regime <em>few-shot</em> ordenam mal os próprios erros: sob extrema escassez de dados, as estimativas de confiança não separam predições corretas de incorretas o bastante para sustentar cobertura útil sob restrição de risco. Avaliamos doze <em>corpora</em> em português com orçamentos de 1 a 10 exemplos por classe, contra sete <em>baselines post-hoc</em> &mdash; o mais forte deles sob busca oracular de hiperparâmetros. O <em>ajuste fino prototípico episódico</em> desloca essa fronteira: a AURC cai em uma mediana de 67% no cenário 5-shot. Sob um conjunto de calibração disjunto também da seleção do modelo, o método certifica 0,91 de cobertura para um risco-alvo de 5% em textos de decisões judiciais, cenário em que o <em>baseline</em> ajustado não admite qualquer limiar viável.</p>
-      <p>Um experimento fatorial 4&times;2 separa representação e estimador de confiança, e localiza o efeito na representação. Medido em grandezas que descontam a acurácia, trocar a representação move o desempenho de 6 a 24 vezes mais do que trocar o escore, conforme a grandeza: mediana de 0,056 contra 0,0023 em E-AURC e de 0,091 contra 0,014 em AUROC correto-vs-incorreto, nos doze <em>corpora</em>. Duas ressalvas qualificam o achado. As intervenções na representação não são intercambiáveis &mdash; o SetFit, mesmo com ajuste no conjunto de teste, fica bem atrás e sofre degradação severa a um exemplo por classe. E o certificado limita o risco apenas <em>in-distribution</em>: em um fluxo contendo classes não vistas, o mesmo limiar resulta em erro empírico de 15,2% frente ao risco-alvo de 5%.</p>
+      <p>Um experimento fatorial 4&times;2 separa representação e estimador de confiança, e localiza o efeito na representação. Medido em grandezas que descontam a acurácia, trocar a representação move o desempenho de 6 a 24 vezes mais do que trocar o escore, conforme a grandeza: mediana de 0,056 contra 0,0023 em E-AURC e de 0,091 contra 0,014 em AUROC correto-vs-incorreto, nos doze <em>corpora</em>. Duas ressalvas qualificam o achado. As intervenções na representação não são intercambiáveis &mdash; o SetFit, mesmo na configuração escolhida por varredura própria sobre a AURC de validação, fica bem atrás e sofre degradação severa a um exemplo por classe. E o certificado limita o risco apenas <em>in-distribution</em>: em um fluxo contendo classes não vistas, o mesmo limiar chega a produzir erro empírico de 15,2% frente ao risco-alvo de 5%, no pior dos cinco <em>corpora</em> avaliados.</p>
     </div>
 
     <div class="cards">
@@ -781,6 +781,19 @@ footer a{color:var(--ink-2)}
       entre 0,11 e 0,32, e a média descreve bem a distribuição; o Brands é o outro caso assimétrico, mas por ter dois
       folds com AURC exatamente zero, e não por uma cauda ruim. A dispersão do AURC não se transfere para a cobertura
       certificada: no RulingBR ela é 0,943, 0,997, 0,956, 0,875 e 0,943 fold a fold.</p>
+      <p><b>Essa dispersão é dos dados, não do otimizador &mdash; e a variância de otimização, medida, não é
+      desprezível.</b> Refizemos o treino com uma segunda semente nos doze corpora e com uma terceira em três deles,
+      mantendo o suporte fixo, de modo que só a inicialização e a amostragem episódica variam. No IntentPT e no
+      RulingBR a ordenação dos cinco folds por AURC é <em>idêntica</em> nas três sementes: o fold difícil continua
+      difícil sob outra inicialização. Na mediana dos doze, o deslocamento entre sementes é de <b>0,0015 de AURC, ou
+      9,7% do desvio entre folds</b> &mdash; mas a faixa vai de 0,3% a <b>100,5% no Buscape</b>, onde o ruído de
+      otimização iguala o desvio entre folds. O Recognasumm é o segundo caso, com 0,0142.</p>
+      <p>Isso tem duas consequências que preferimos registrar a omitir. O deslocamento entre sementes <b>excede o
+      efeito de trocar o escore em quatro dos doze corpora</b>, de modo que o denominador 0,0023 da razão
+      representação/escore deve ser lido como cota superior da resolução do desenho, e não como medição do efeito. E a
+      margem do numerador não é uniforme: a razão entre o efeito de representação e o deslocamento entre sementes tem
+      mediana de 51, mas <b>cai a 3,5 no Buscape</b>. Uma versão anterior desta análise, sobre três corpora apenas,
+      indicava um mínimo de 19 &mdash; estendê-la aos doze deu um resultado pior, e é o dos doze que reportamos.</p>
     </div>
 
     <h3 class="narrow">Os sete baselines post-hoc</h3>
@@ -972,10 +985,25 @@ footer a{color:var(--ink-2)}
       similaridades aos mesmos protótipos, e que difiram pouco é em parte esperado por construção. O apêndice de
       variantes amplia o conjunto para cinco estimadores, incluindo o X-Mahalanobis, que lê a mesma geometria por
       covariância entre camadas e é o único a se destacar &mdash; ainda assim a 0,0096 do cosseno, uma ordem de
-      grandeza abaixo do efeito da representação. Os escores estruturalmente distintos da grade completa (Energy,
-      <var>k</var>NN, Mahalanobis, GradNorm, ReAct, ConjNorm) não foram avaliados sobre a representação prototípica.
-      O que os dados sustentam é a convergência entre estimadores lidos sobre uma geometria adaptada, e não a
-      indiferença a qualquer escore post-hoc.</p>
+      grandeza abaixo do efeito da representação. Os sete escores da grade completa foram
+      avaliados sobre a representação prototípica, e o resultado separa três alegações.</p>
+      <p><b>Energy e ReAct convergem; os quatro estruturalmente distintos não.</b> O estimador Energy apresenta diferença de +0,0003 em relação
+      ao cosseno (mediana sobre os doze corpora) e o ReAct +0,0001, resultando em amplitude de 0,0033 entre os quatro escores que leem a
+      geometria prototípica &mdash; magnitude equiparável à margem de 0,0023 observada no par cosseno/MSP. Em contrapartida, os quatro escores
+      estruturalmente distintos permanecem atrás: <b><var>k</var>NN a +0,0439 do cosseno em mediana, ConjNorm a +0,0101, Mahalanobis a +0,0097 e
+      GradNorm a +0,0069</b>, cada um pior que o cosseno em onze ou doze dos doze corpora. Dado que todos preservam a saída argmax prototípica, essas
+      disparidades configuram-se como diferenças de E-AURC, comparáveis ao efeito de representação de 0,056. Ao considerar a amplitude sobre os
+      oito escores, <b>a razão de impacto entre representação e escore é reduzida de 24 para aproximadamente 1,2</b>.</p>
+      <p><b>A adaptação da representação reduz o preço de escolher mal.</b> Os <em>mesmos</em> sete escores post-hoc apresentam amplitude mediana de
+      <b>0,1060 de AURC sobre o codificador de entropia cruzada e de 0,0460 sobre a representação prototípica &mdash; redução de 2,3 vezes</b>. É a
+      alegação da progressão de atribuição verificada fora da família de escores que a motivou, e não apenas entre leituras do mesmo vetor de
+      similaridades.</p>
+      <p>Duas observações delimitam o contraexemplo sem invalidá-lo. O déficit não é uniforme nem propriedade da representação latente: Mahalanobis e
+      ConjNorm chegam a superar o cosseno no RulingBR (0,071 contra 0,073) e ficam muito atrás no Buscape (0,136 e 0,121 contra 0,057). O que os quatro
+      têm em comum é depender de um insumo que o regime raciona &mdash; banco denso no <var>k</var>NN, covariância estimável no Mahalanobis, constante de
+      partição amostrada no ConjNorm &mdash;, e todos precisam estimá-lo sobre <var>CK</var> exemplos de suporte. Consequentemente, a alegação
+      empiricamente sustentada restringe-se à seguinte: sobre uma geometria adaptada à tarefa, os estimadores providos de condições operacionais
+      adequadas convergem entre si, e o custo de uma escolha ruim cai pela metade &mdash; sem que a escolha se torne indiferente.</p>
     </div>
 
     <h3 class="narrow">A escada: quanto o escore importa, conforme a adaptação do espaço</h3>
@@ -1196,7 +1224,7 @@ footer a{color:var(--ink-2)}
     </div>
 
     <div class="note narrow">
-      <h4>Hoje recomendaríamos o CRC como padrão, com o SGR como alternativa conservadora</h4>
+      <h4>CRC ou SGR: a escolha é condicional, não uma recomendação geral</h4>
       <p>O CRC obtém sua vantagem por não pagar pela busca de limiar, o que só é válido quando o risco seletivo é
       monótono no limiar &mdash; condição que o risco seletivo não garante em geral. Essa condição é testável nos
       conjuntos de calibração que já temos, então a medimos em vez de assumi-la: sobre 200 quantis de limiar por fold, a
@@ -1447,7 +1475,7 @@ footer a{color:var(--ink-2)}
       encoder</b>: o XLM-R ainda supera o baseline varrido em nove dos doze corpora, mas seu AURC médio é 0,194 contra
       0,074 do BERTimbau, com as perdas concentradas em texto coloquial brasileiro de resenhas e redes sociais (TuPy
       0,550 vs. 0,068; Buscape 0,308 vs. 0,047) &mdash; justamente o registro que um encoder específico do português
-      melhor atende. Nos dois corpora em que os encoders se aproximam, a diferença fica dentro da dispersão entre folds (RulingBR 0,075 vs. 0,073; IntentPT 0,114 vs. 0,117). E
+      melhor atende. Nos três corpora em que os encoders se aproximam, a diferença fica dentro da dispersão entre folds (Recognasumm 0,137 vs. 0,136; RulingBR 0,075 vs. 0,073; IntentPT 0,114 vs. 0,117). E
       uma <b>leitura treinada sobre um espaço congelado</b> rende aproximadamente o que rende o ajuste fino
       supervisionado do encoder inteiro (média 0,203 contra 0,219), mas não fecha a distância até o treino episódico,
       falhando exatamente nos corpora especializados em que a leitura por centroides falha.</p>
@@ -1574,10 +1602,10 @@ footer a{color:var(--ink-2)}
       partição de avaliação e é um limite superior do que o SGR poderia certificar sobre aquela mesma população. As duas
       não são comparáveis termo a termo e nenhuma limita a outra, pois são medidas sobre populações diferentes.</p>
       <p>O protocolo de OOD é a retenção de classes, que produz OOD <em>próximo</em> por construção e não cobre nem OOD
-      distante nem deriva temporal ou adversarial. Todas as execuções usam uma única semente (42), então os desvios
-      padrão medem sensibilidade à partição dos dados, não à inicialização. A grade detalhada cobre quatro corpora,
-      embora a escada que ela resume seja medida nos doze, e seus protótipos do encoder CE são construídos com exemplos
-      de validação, não com o suporte de treino. A comparação com LLM cobre um único tamanho de modelo e um único
+      distante nem deriva temporal ou adversarial. As tabelas principais usam uma única semente (42), de modo que os desvios
+      padrão ali medem sensibilidade à partição dos dados, não à inicialização; medimos o que isso omite refazendo o
+      treino com outra semente nos doze corpora, e com uma terceira em três deles (ver abaixo). A grade detalhada cobre quatro corpora,
+      embora a escada que ela resume seja medida nos doze, Os protótipos do encoder CE eram construídos com exemplos de validação, e não com o suporte de treino, porque os checkpoints originais não tinham sido preservados; retreinamos o baseline guardando as features de suporte e a ordenação da grade não muda &mdash; sobre a representação CE o cosseno continua pior que o MSP nos quatro corpora. A comparação com LLM cobre um único tamanho de modelo e um único
       protocolo de elicitação; o LLM muito provavelmente viu esses corpora públicos no pré-treino, um confundidor que o
       favorece. Ambos os encoders base são da família BERT, e resta em aberto se os ganhos persistem com encoders
       maiores.</p>
@@ -1684,7 +1712,7 @@ make test-baselines                 <span class="c"># testes dos scorers</span><
           <tr><td>Episódios</td><td style="text-align:left">100 por época; <var>K</var>∈{1,5,10} de suporte, ≤25 de consulta por classe</td></tr>
           <tr><td>Adaptador</td><td style="text-align:left"><var>ρ</var>=15, <var>τ</var><sub>tr</sub>=20, <var>τ</var>=15, <var>t</var>=5 — todos considerados dispensáveis</td></tr>
           <tr><td>SGR</td><td style="text-align:left"><var>δ</var>=0,05, <var>r</var>*∈{0,05, 0,10}, busca binária sobre quantis de calibração</td></tr>
-          <tr><td>Protocolo</td><td style="text-align:left">5 folds, semente única (42); ≈40% das classes retidas como OOD nos corpora multiclasse (≈20% das instâncias de teste)</td></tr>
+          <tr><td>Protocolo</td><td style="text-align:left">5 folds; semente 42 nas tabelas principais, com uma segunda semente nos doze corpora e uma terceira em três deles para medir a variância de otimização; ≈40% das classes retidas como OOD nos corpora multiclasse (≈20% das instâncias de teste)</td></tr>
         </tbody>
       </table>
     </div>
