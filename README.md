@@ -1,6 +1,12 @@
 # Selective Risk Framework
 
-Esse repositório contém a implementação do framework de avaliação e mitigação de risco em classificação seletiva e detecção de dados fora de distribuição (OOD - Out-of-Distribution). O framework integra o método **LAQDA** (Label-Aware Quantitative Data Analysis), algoritmos de **Baselines** (MSP, Energy Score, Distância de Mahalanobis, kNN) e o controlador de rejeição controlada **SGR** (Selection with Guaranteed Risk).
+[![Página do Projeto](https://img.shields.io/badge/Projeto-Site%20Interativo-blue)](https://beatrizalmeidaf.github.io/selective-risk-framework/)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen)](https://www.python.org/)
+[![Licença](https://img.shields.io/badge/Licen%C3%A7a-MIT-blue.svg)](LICENSE)
+
+Modelos de linguagem falham em estimar a própria incerteza quando treinados com poucos dados (*few-shot*), ficando excessivamente confiantes em suas predições erradas. Este repositório resolve esse problema acoplando um ajuste fino geométrico (episódico) a um avaliador de risco (SGR), permitindo que o modelo "saiba quando não sabe", rejeitando predições perigosas e mantendo a taxa de erro rigorosamente travada em 5%.
+
+Esse repositório contém a implementação completa do framework de avaliação e mitigação de risco em classificação seletiva e detecção de dados fora de distribuição (OOD). O código integra a estruturação da geometria latente (**ProtoSel** / LAQDA), múltiplos escores avaliadores *post-hoc* de confiança (**Baselines**: MSP, Energy Score, ReAct, ConjNorm, Distância de Mahalanobis, kNN, etc.) e o certificado estatístico de rejeição controlada **SGR** (Selection with Guaranteed Risk).
 
 ---
 
@@ -76,14 +82,16 @@ Se você preferir executar o treinamento de forma isolada usando contêineres co
 
 ## Como Executar
 
-### 1. Pré-processamento e Divisões OOD
+### 1. Obtenção de Dados e Pré-processamento
+
+**Acesso aos Dados:** O framework espera que os *corpora* estejam localizados nas pastas `data/datasets/datasets-br-nlp` e `data/datasets/datasets-en-nlp`. Certifique-se de mapear os dados corretamente nesses diretórios antes de prosseguir.
 
 Antes de executar qualquer treinamento, garanta a geração das divisões In-Distribution (ID) e Out-of-Distribution (OOD) determinísticas para todos os folds. O framework possui um ponto de entrada centralizado para isso:
 
 ```bash
 python main.py
 ```
-*(Esse comando garante que o arquivo `configs/ood_splits.json` seja devidamente preenchido mapeando todos os corpus presentes nas pastas `datasets-br-nlp` e `datasets-en-nlp`).*
+*(Esse comando garante que o arquivo `configs/ood_splits.json` seja devidamente preenchido mapeando todos os corpus presentes nas pastas de datasets).*
 
 ### 2. Treinamento do LAQDA
 
@@ -254,11 +262,5 @@ Todas as métricas especificadas abaixo são calculadas e exportadas automaticam
 | **Predição Seletiva** | Curva RC e AURC / E-AURC | Avalia o trade-off entre risco e cobertura. O E-AURC subtrai o risco base do modelo para normalizar comparações. |
 | **Predição Seletiva** | Risk @ Cobertura Fixo | Mede o risco quando a cobertura do sistema é travada cirurgicamente em patamares (ex: 50%, 80%, 95%). |
 | **Garantia de Risco** | Cobertura do SGR | Mensura a cobertura empírica alcançada ao fixar níveis teóricos restritos de risco (via PAC Bounds). |
-| **Abstenção Ativa** | Taxa Abstenção / Acc Aceita | Exclusiva do LAQDA com SGR. Mede a porcentagem real de testes classificados como OOD/Rejeição (-1) e a acurácia do que sobrou na peneira. |classificados como OOD/Rejeição (-1) e a acurácia do que sobrou na peneira. |
-
-
-./scripts/run_all_pt.sh
-./scripts/run_all_en.sh
-
-python scripts/compare.py --corpus IntentPTCorpus --plot
+| **Abstenção Ativa** | Taxa Abstenção / Acc Aceita | Exclusiva do LAQDA com SGR. Mede a porcentagem real de testes classificados como OOD/Rejeição (-1) e a acurácia do que sobrou na peneira. |
 
