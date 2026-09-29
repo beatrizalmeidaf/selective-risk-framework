@@ -13,10 +13,9 @@
 [![Stars](https://img.shields.io/github/stars/beatrizalmeidaf/selective-risk-framework?style=social)](https://github.com/beatrizalmeidaf/selective-risk-framework/stargazers)
 
 [**Project page**](https://beatrizalmeidaf.github.io/selective-risk-framework/) ·
-[**Paper (LaTeX source)**](docs/conferences/ACL/paper.tex) ·
-[**Quickstart**](#-quickstart) ·
-[**Results**](#-key-results) ·
-[**Cite**](#-citation)
+[**Key results**](#key-results) ·
+[**What's inside**](#whats-inside) ·
+[**Quickstart**](#quickstart)
 
 <img src="docs/assets/certified_coverage.png" alt="Certified coverage at 5% target risk: ProtoSel vs oracle-tuned MSP on 10 Portuguese corpora" width="820">
 
@@ -60,7 +59,7 @@ flowchart LR
 
 **Representation or score?** A 4×2 factorial study (frozen / cross-entropy / SetFit / prototypical encoder × MSP / cosine score) shows that changing the **representation** moves accuracy-invariant metrics **6–24× more** than swapping the confidence estimator on top of it. SetFit, even with tuned hyperparameters, falls behind and degrades sharply at 1-shot.
 
-**Honest limitation:** the SGR certificate holds **in-distribution only**. When unseen classes enter the stream, the same threshold reaches **15.2% empirical error** against a 5% target on the worst of five corpora. We report this failure mode on purpose. See the paper and the [project page](https://beatrizalmeidaf.github.io/selective-risk-framework/) for all 18 tables.
+**Honest limitation:** the SGR certificate holds **in-distribution only**. When unseen classes enter the stream, the same threshold reaches **15.2% empirical error** against a 5% target on the worst of five corpora. We report this failure mode on purpose. See the [project page](https://beatrizalmeidaf.github.io/selective-risk-framework/) for all 18 tables.
 
 ## What's inside
 
@@ -138,6 +137,6 @@ The scripts submit every method (baselines, kNN-contrastive, ProtoSel, ProtoSel+
 </details>
 
 
-## 📄 License
+## License
 
 [MIT](LICENSE)
