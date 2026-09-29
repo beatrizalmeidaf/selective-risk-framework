@@ -1,7 +1,7 @@
 [project]
 name = "selective-risk-framework"
 version = "0.1.0"
-description = "Add your description here"
+description = "Selective classification with guaranteed risk (SGR) for few-shot text: episodic prototypical fine-tuning + post-hoc OOD baselines"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

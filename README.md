@@ -1,266 +1,143 @@
+<div align="center">
+
 # Selective Risk Framework
 
-[![Página do Projeto](https://img.shields.io/badge/Projeto-Site%20Interativo-blue)](https://beatrizalmeidaf.github.io/selective-risk-framework/)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen)](https://www.python.org/)
-[![Licença](https://img.shields.io/badge/Licen%C3%A7a-MIT-blue.svg)](LICENSE)
+**Few-shot text classifiers that know when they don't know, with a statistical guarantee on the error rate of the predictions they keep.**
 
-Modelos de linguagem falham em estimar a própria incerteza quando treinados com poucos dados (*few-shot*), ficando excessivamente confiantes em suas predições erradas. Este repositório resolve esse problema acoplando um ajuste fino geométrico (episódico) a um avaliador de risco (SGR), permitindo que o modelo "saiba quando não sabe", rejeitando predições perigosas e mantendo a taxa de erro rigorosamente travada em 5%.
+🇺🇸 **English** · 🇧🇷 [Português](README.pt-BR.md)
 
-Esse repositório contém a implementação completa do framework de avaliação e mitigação de risco em classificação seletiva e detecção de dados fora de distribuição (OOD). O código integra a estruturação da geometria latente (**ProtoSel** / LAQDA), múltiplos escores avaliadores *post-hoc* de confiança (**Baselines**: MSP, Energy Score, ReAct, ConjNorm, Distância de Mahalanobis, kNN, etc.) e o certificado estatístico de rejeição controlada **SGR** (Selection with Guaranteed Risk).
+[![Project page](https://img.shields.io/badge/🌐_Project_page-interactive_results-2563eb)](https://beatrizalmeidaf.github.io/selective-risk-framework/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.8-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/beatrizalmeidaf/selective-risk-framework?style=social)](https://github.com/beatrizalmeidaf/selective-risk-framework/stargazers)
 
----
+[**Project page**](https://beatrizalmeidaf.github.io/selective-risk-framework/) ·
+[**Paper (LaTeX source)**](docs/conferences/ACL/paper.tex) ·
+[**Quickstart**](#-quickstart) ·
+[**Results**](#-key-results) ·
+[**Cite**](#-citation)
 
-## Página do Projeto (GitHub Pages)
+<img src="docs/assets/certified_coverage.png" alt="Certified coverage at 5% target risk: ProtoSel vs oracle-tuned MSP on 10 Portuguese corpora" width="820">
 
-A página pública do projeto — resumo, pipeline, gráficos interativos e todas as tabelas de resultados do artigo — fica em [`site/`](site/), em duas versões independentes e completas: [`index.html`](site/index.html) inteiramente em português (idioma padrão do site) e [`en.html`](site/en.html) inteiramente em inglês, alternáveis pelo seletor PT/EN na barra de navegação. O arquivo `pt.html` é mantido apenas como redirecionamento para `index.html`, para não quebrar links antigos.
-
-*   **Pré-visualizar localmente**:
-    ```bash
-    python -m http.server 8000 --directory site
-    # abre http://localhost:8000
-    ```
-*   **Publicar**: o workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publica a pasta `site/` a cada push na `main`. É necessário configurar uma única vez em **Settings → Pages → Source: GitHub Actions**. A URL final é `https://beatrizalmeidaf.github.io/selective-risk-framework/`.
-
-Cada página é autocontida (sem imagens externas). Das 18 tabelas, **17 têm gráfico** e alternam entre **Gráfico** e **Tabela** pelo botão no cabeçalho do painel; cada gráfico traz uma etiqueta de direção (↓ menor é melhor / ↑ maior é melhor). A Tabela 16 é a única sem gráfico, por listar configurações e não números comparáveis. Formas usadas: barras horizontais agrupadas (até 4 séries, com hastes de desvio na ablação), mapa de calor (grade de 7 baselines), pequenos múltiplos (grade 4×2 e AURC vs. K) e barras em escala logarítmica com linhas de referência (tamanho `m`).
-
-Os números são transcritos de [`docs/conferences/ACL/paper.tex`](docs/conferences/ACL/paper.tex). Ao atualizar o artigo, atualize os blocos de dados no `<script>` **das duas páginas** (`index.html` e `en.html`; a versão PT usa vírgula decimal via `nf()`): `AURC`, `GRID`, `COV`, `CERT`, `FRW`, `EN_ORDER`, `ENCERT`, `ALT`, `KSHOT`, `LADDER` e `MROWS` — cada um corresponde a uma tabela do paper.
+</div>
 
 ---
 
-## Estrutura do Framework
+## Why this exists
 
-A estrutura do projeto está organizada de forma modular:
+With only **1, 5 or 10 labeled examples per class**, text classifiers are confidently wrong. Their confidence scores can't tell correct predictions from errors. If you ask for *"at most 5% errors on the answers you give"*, a standard pipeline often can't find **any** threshold that meets the target, so it has to answer nothing.
 
-*   **`configs/`**: Arquivos de configuração centralizados do modelo (ex: `model_config.yaml`).
-*   **`data/`**: Componentes de dados, datamodules do PyTorch Lightning/customizados e samplers episódicos de k-shot.
-*   **`methods/`**:
-    *   **`laqda/`**: Módulos e executáveis do LAQDA (Label-Aware Encoder, QDA Sampler, Loss contrastiva, cli de treino/inferência).
-    *   **`baselines/`**: Classificadores padrão, scorers probabilísticos (Maximum Softmax Probability - MSP, Energy Score), scorers de distância (Distância de Mahalanobis, kNN dentro de `distance/`), e scorers baseados em técnicas SOTA (**GradNorm** analítico, **ReAct** com truncamento de ativações anômalas, e **ConjNorm** por normalização de cosseno na hiperesfera dentro de `sota/`).
-    *   **`sgr/`**: O algoritmo **SGR** (Selection with Guaranteed Risk) para controle estatístico de risco e limiarização pós-hoc.
-    *   **`metrics/`**: A suíte unificada de avaliação (Acurácia, F1-Score, ECE calibrado, AUROC, FPR@95, AUPR e AURC).
-*   **`tests/`**: Testes automatizados para validação matemática e de integridade dos componentes do framework.
+This repository shows that the fix lies mainly in the **representation**, not in a smarter confidence score:
 
----
+1. **Episodic prototypical fine-tuning (ProtoSel)** reshapes the latent space so that distance to a class prototype actually ranks errors.
+2. **SGR (Selection with Guaranteed Risk)** turns that score into a threshold θ\* with a PAC-style certificate: `Pr(selective risk > r*) < δ`.
+3. The model **abstains** when confidence < θ\*. It returns an answer only when it can keep the stated risk bound.
 
-## Configuração do Ambiente
+```mermaid
+flowchart LR
+    A["Few-shot support set<br/>K = 1, 5, 10 per class"] --> B[Episodic prototypical<br/>fine-tuning]
+    B --> C["Cosine-to-prototype<br/>confidence κ(x)"]
+    D[Disjoint ID<br/>calibration set] --> E["SGR: binomial-tail<br/>bound → θ*"]
+    C --> E
+    E --> F{"κ(x) ≥ θ*?"}
+    F -- yes --> G["✅ Predict<br/>risk ≤ r* w.p. 1−δ"]
+    F -- no --> H[🛑 Abstain]
+```
 
-O framework suporta duas formas principais de execução: nativa via `uv` (gerenciador rápido de pacotes Python) ou containerizada via `Docker`.
+## Key results
 
-### Opção A: Execução Nativa (Recomendado para Cluster/DGX)
+12 Portuguese corpora (reviews, hate speech, legal rulings, intents, MMLU-PT, …), 5-shot, mean over 5 folds. Baselines: 7 post-hoc scorers (MSP, Energy, ReAct, ConjNorm, GradNorm, Mahalanobis, kNN), with the strongest one tuned by **oracle hyperparameter search**.
 
-O projeto utiliza o `uv` para automatizar e acelerar a gerência de pacotes virtuais.
+| | Oracle-tuned MSP | **ProtoSel (ours)** |
+|:---|:---:|:---:|
+| Corpora with the lowest AURC | 0 / 12 | **12 / 12** |
+| Median AURC reduction | — | **−67%** |
+| Mean certified coverage @ 5% risk | 0.14 | **0.57** |
+| Mean certified coverage @ 10% risk | 0.28 | **0.73** |
+| RulingBR (legal): certified coverage @ 5% risk | infeasible | **0.94** |
+| ID accuracy gain | — | **+3 to +45 pp** |
 
-1.  **Instalar o UV e Sincronizar Dependências**:
-    Na raiz do projeto, inicialize o ambiente virtual integrado:
-    ```bash
-    make setup-env
-    ```
-    *(Isso instalará a ferramenta `uv` e gerará automaticamente uma pasta oculta `.venv` com todas as dependências especificadas instaladas).*
+**Representation or score?** A 4×2 factorial study (frozen / cross-entropy / SetFit / prototypical encoder × MSP / cosine score) shows that changing the **representation** moves accuracy-invariant metrics **6–24× more** than swapping the confidence estimator on top of it. SetFit, even with tuned hyperparameters, falls behind and degrades sharply at 1-shot.
 
-2.  **Ativar o Ambiente Virtual**:
-    Antes de rodar qualquer script do framework, ative o ambiente virtual criado:
-    ```bash
-    source .venv/bin/activate
-    ```
+**Honest limitation:** the SGR certificate holds **in-distribution only**. When unseen classes enter the stream, the same threshold reaches **15.2% empirical error** against a 5% target on the worst of five corpora. We report this failure mode on purpose. See the paper and the [project page](https://beatrizalmeidaf.github.io/selective-risk-framework/) for all 18 tables.
 
-### Opção B: Execução Containerizada (Docker)
+## What's inside
 
-Se você preferir executar o treinamento de forma isolada usando contêineres com suporte a GPU:
+| Module | What it gives you |
+|:---|:---|
+| [`methods/laqda/`](methods/laqda/) | Episodic prototypical encoder (label-aware cross-attention, QDA sampler, contrastive loss), train/infer CLIs |
+| [`methods/sgr/`](methods/sgr/) | **SGR** threshold search with a binomial-tail risk bound: reusable on any confidence score |
+| [`methods/baselines/`](methods/baselines/) | MSP, Energy, **ReAct**, **ConjNorm**, **GradNorm**, Mahalanobis, kNN: post-hoc OOD / confidence scorers |
+| [`methods/metrics/`](methods/metrics/) | One suite for AURC, E-AURC, risk-coverage curves, risk@coverage, AUROC, FPR@95, AUPR-in/out, ECE, SGR coverage |
+| [`data/`](data/) | Deterministic ID/OOD splits, k-shot episodic samplers, Lightning-style datamodules |
+| [`scripts/`](scripts/) | SLURM launchers for the full benchmark, cross-fold aggregation and plots |
 
-1.  **Construir a Imagem**:
-    ```bash
-    make laqda-install
-    ```
-    *(Roda internamente o comando `docker compose build laqda`).*
-
-2.  **Subir o Container com GPU**:
-    ```bash
-    docker compose up laqda
-    ```
-
----
-
-## Como Executar
-
-### 1. Obtenção de Dados e Pré-processamento
-
-**Acesso aos Dados:** O framework espera que os *corpora* estejam localizados nas pastas `data/datasets/datasets-br-nlp` e `data/datasets/datasets-en-nlp`. Certifique-se de mapear os dados corretamente nesses diretórios antes de prosseguir.
-
-Antes de executar qualquer treinamento, garanta a geração das divisões In-Distribution (ID) e Out-of-Distribution (OOD) determinísticas para todos os folds. O framework possui um ponto de entrada centralizado para isso:
+## Quickstart
 
 ```bash
-python main.py
+git clone https://github.com/beatrizalmeidaf/selective-risk-framework.git
+cd selective-risk-framework
+make setup-env && source .venv/bin/activate   # installs uv + all dependencies
+# or: make laqda-install && docker compose up laqda   (GPU container)
 ```
-*(Esse comando garante que o arquivo `configs/ood_splits.json` seja devidamente preenchido mapeando todos os corpus presentes nas pastas de datasets).*
 
-### 2. Treinamento do LAQDA
+Put the corpora under `data/datasets/datasets-br-nlp/` (or `datasets-en-nlp/`), then build the deterministic ID/OOD splits:
 
-O LAQDA pode ser treinado com ou sem a ativação da otimização do threshold SGR. 
+```bash
+python main.py            # writes configs/ood_splits.json
+```
 
-*   **LAQDA Tradicional (Sem SGR)**:
-    Opera como um classificador fechado padrão com **100% de cobertura**. Se receber dados OOD, ele tentará encaixar em uma classe conhecida (devido à obrigatoriedade de chute), podendo gerar alta taxa de Falsos Positivos.
-    ```bash
-    python -m methods.laqda.cli.train \
-        --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
-        --fold 01 \
-        --save_dir outputs/laqda/IntentPTCorpus/fold_01
-    ```
-*   **LAQDA Seletivo (Com SGR)**:
-    Acopla uma camada de segurança estatística rigorosa. Estima e salva um limiar crítico ($\theta^*$) correspondente a **5% de risco**. Em teste, se a confiança for menor que $\theta^*$, o modelo **se recusa a prever (abstenção)**. Isso derruba a cobertura geral, mas garante matematicamente que as respostas dadas pelo modelo tenham menos de 5% de erro, estancando os Falsos Positivos.
-    ```bash
-    python -m methods.laqda.cli.train \
-        --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
-        --fold 01 \
-        --save_dir outputs/laqda_sgr/IntentPTCorpus/fold_01 \
-        --use_sgr
-    ```
+Train a 5-shot ProtoSel model **with the SGR certificate** (5% target risk):
 
-### 3. Treinamento de Baselines
+```bash
+python -m methods.laqda.cli.train \
+    --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
+    --fold 01 --kshot 5 --use_sgr \
+    --save_dir outputs/laqda_sgr/IntentPTCorpus/fold_01
+```
 
-Para rodar os baselines, treine o classificador supervisionado base. Ele carregará os parâmetros de OOD de `configs/methods_config.yaml` e executará e salvará automaticamente o benchmark individual de todas as técnicas (MSP, Energy Score, Distância de Mahalanobis, kNN, bem como as abordagens SOTA: GradNorm, ReAct e ConjNorm) no conjunto de testes:
+Run all 7 post-hoc baselines on the same split:
 
 ```bash
 python -m methods.baselines.cli.train_baseline \
     --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
-    --fold 01 \
+    --fold 01 --kshot 5 \
     --save_dir outputs/baseline/IntentPTCorpus/fold_01
 ```
 
-### 4. Suporte a Treinamento K-shot (Poucos Exemplos)
-
-Todos os scripts de treinamento (`train_baseline.py` e `train.py`) e de inferência (`infer.py`) aceitam o argumento opcional `--kshot <K>` (ex: `--kshot 5`). 
-
-Quando especificado:
-1. O `StandardDataModule` realiza uma amostragem determinística para limitar o conjunto de treino a no máximo `K` exemplos por classe.
-2. Os modelos e tensores gerados são salvos em subdiretórios estruturados como `kshot_<K>/` (ex: `outputs/baseline/IntentPTCorpus/fold_01/kshot_5/`).
-
-### 5. Executando Inferências e Avaliação (LAQDA)
-
-Para rodar inferências no conjunto de testes com o modelo LAQDA treinado:
+Aggregate across folds and plot AURC vs. SGR coverage:
 
 ```bash
-python -m methods.laqda.cli.infer \
-    --dataset_dir data/datasets/datasets-br-nlp/intent/IntentPTCorpus/few_shot \
-    --fold 01 \
-    --model_paths outputs/laqda/IntentPTCorpus/fold_01/kshot_5/acc_best_model.pth \
-    --output_dir outputs/laqda/IntentPTCorpus/fold_01 \
-    --kshot 5
+python scripts/compare.py --corpus IntentPTCorpus --plot
 ```
 
-### 6. Consolidando Métricas (LAQDA)
-
-Após salvar os arquivos correspondentes a cada execução de inferência, você pode gerar o relatório pivotado das métricas:
+<details>
+<summary><b>Full benchmark on a SLURM cluster</b></summary>
 
 ```bash
-make laqda-eval
+bash scripts/run_all_pt.sh   # Portuguese corpora
+bash scripts/run_all_en.sh   # English corpora
+squeue -u $USER              # monitor
 ```
 
----
+The scripts submit every method (baselines, kNN-contrastive, ProtoSel, ProtoSel+SGR) × folds 01–05 × k ∈ {1, 5, 10}, one H100 per job. Logs go to `outputs/logs_slurm/{pt,en}/`.
+</details>
 
-## Testes Automatizados
+<details>
+<summary><b>Makefile shortcuts</b></summary>
 
-O framework possui uma bateria de testes unitários para validar se os scorers OOD e de distância estão funcionando corretamente e gerando saídas nos formatos corretos.
-
-Para executar os testes:
-```bash
-make test-baselines
-```
-*(Ou execute diretamente pelo interpretador: `python -m tests.test_metrics`).*
-
----
-
-## Execução e Monitoramento via Cluster (SLURM)
-
-O framework possui suporte para execução e monitoramento de experimentos no cluster usando SLURM de forma assíncrona.
-
-### 1. Execução Completa do Benchmark
-
-Para submeter todos os algoritmos (Baselines, KNN-Contrastive, LAQDA e LAQDA+SGR) por 100 épocas sobre todos os folds (`fold_01` a `fold_05`) e múltiplos k-shots (`1`, `5`, `10`), utilize os scripts abaixo de acordo com o idioma desejado:
-
-*   **Para Datasets em Português (PT)**:
-    ```bash
-    bash scripts/run_all_pt.sh
-    ```
-*   **Para Datasets em Inglês (EN)**:
-    ```bash
-    bash scripts/run_all_en.sh
-    ```
-
-Esses scripts disparam automaticamente múltiplos jobs paralelos no cluster usando a partição `h100n3` e alocando uma GPU H100 por execução. Os logs de saída serão salvos em `outputs/logs_slurm/pt/` e `outputs/logs_slurm/en/`.
-
-### 2. Acompanhamento dos Jobs
-
-*   **Verificar Fila de Jobs**:
-    ```bash
-    squeue -u $USER
-    ```
-*   **Acompanhar Saída de um Job em Tempo Real**:
-    ```bash
-    tail -f outputs/logs_slurm/pt/base_<CORPUS>_<FOLD>_<K>_<JOB_ID>.log
-    ```
-*   **Cancelar Todos os seus Jobs**:
-    ```bash
-    scancel -u $USER
-    ```
-
----
-
-## Consolidação de Resultados e Gráficos
-
-O script `scripts/compare.py` é responsável por varrer os logs consolidados em `outputs/final_eval/` e gerar relatórios agregados e análises visuais.
-
-### 1. Agregação Cross-Fold (Média ± Desvio Padrão)
-
-O script detecta automaticamente a linguagem e categoria do dataset a partir da estrutura em `data/datasets/` e calcula a média e desvio padrão entre todos os 5 folds executados.
-
-*   **Gerar Tabela de Comparação (Exemplo)**:
-    ```bash
-    python scripts/compare.py --corpus IntentPTCorpus
-    ```
-
-### 2. Geração de Relatório Visual
-
-Ao passar a flag `--plot`, o script gera gráficos comparativos cruzando a métrica base **AURC** e a cobertura de garantia de risco **SGR@10%**, salvando o gráfico `.png` em `outputs/final_eval/reports/`.
-
-*   **Gerar Tabela + Gráfico Consolidado**:
-    ```bash
-    python scripts/compare.py --corpus IntentPTCorpus --plot
-    ```
-
----
-
-## Comandos do Makefile
-
-O `Makefile` atua como o orquestrador de atalhos rápidos do framework:
-
-| Comando | Descrição |
+| Command | Description |
 |:---|:---|
-| `make setup-env` | Cria a `.venv` local e instala dependências via `uv`. |
-| `make laqda-install` | Cria a imagem Docker para o LAQDA. |
-| `make laqda-train` | Exibe a ajuda com parâmetros do script de treino do LAQDA. |
-| `make laqda-infer` | Exibe exemplo de parâmetros do script de inferência do LAQDA. |
-| `make train-baseline` | Exibe exemplo de treino do modelo baseline. |
-| `make test-baselines` | Executa a suíte de testes unitários (`tests/test_metrics.py`). |
-| `make run-pipeline` | Dispara o pipeline de benchmark completo (PT e EN) no SLURM. |
-| `make laqda-eval` | Consolida e apresenta os relatórios e métricas consolidadas. |
-| `make laqda-lint` | Valida sintaxe e compilação dos módulos Python. |
-| `make laqda-clean` | Remove arquivos temporários de cache e pastas `__pycache__`. |
+| `make setup-env` | Create `.venv` and install dependencies with `uv` |
+| `make laqda-install` | Build the Docker image |
+| `make test-baselines` | Run unit tests for scorers and metrics |
+| `make run-pipeline` | Launch the full PT + EN benchmark on SLURM |
+| `make laqda-eval` | Consolidate metric reports |
+| `make laqda-lint` / `make laqda-clean` | Syntax check / remove caches |
+</details>
 
----
 
-## Matriz de Métricas Implementada
+## 📄 License
 
-Todas as métricas especificadas abaixo são calculadas e exportadas automaticamente no fim de cada ciclo de teste:
-
-| Eixo de Avaliação | Métrica | Definição / Objetivo |
-|:---|:---|:---|
-| **Classificação Base** | Acurácia, Balanced Acc, F1-Score | Mede o desempenho sobre as previsões aceitas pelo modelo. (Balanced Acc foca no equilíbrio de aprendizado interclasses). |
-| **Classificação Base** | Precision / Recall (Macro) | Precision foca na pureza dos acertos (menos falsos positivos), Recall foca em não esquecer as instâncias de cada classe. |
-| **Calibração** | ECE (Expected Calibration Error) | Quantifica a discrepância entre a confiança do modelo e a sua precisão empírica real. |
-| **Separação OOD** | AUROC / FPR@95 / FPR@90 | Avalia a separabilidade entre dados In-Distribution (ID) vs Out-of-Distribution (OOD). FPR mede os penetras que passam quando travamos o recall em 90/95%. |
-| **Separação OOD** | TNR@95 / AUPR-IN / AUPR-OUT | AUPR mede a separabilidade sob desbalanceamento severo de classes, e TNR mostra a "Taxa de Verdadeiros Negativos" (rejeição de OOD). |
-| **Predição Seletiva** | Curva RC e AURC / E-AURC | Avalia o trade-off entre risco e cobertura. O E-AURC subtrai o risco base do modelo para normalizar comparações. |
-| **Predição Seletiva** | Risk @ Cobertura Fixo | Mede o risco quando a cobertura do sistema é travada cirurgicamente em patamares (ex: 50%, 80%, 95%). |
-| **Garantia de Risco** | Cobertura do SGR | Mensura a cobertura empírica alcançada ao fixar níveis teóricos restritos de risco (via PAC Bounds). |
-| **Abstenção Ativa** | Taxa Abstenção / Acc Aceita | Exclusiva do LAQDA com SGR. Mede a porcentagem real de testes classificados como OOD/Rejeição (-1) e a acurácia do que sobrou na peneira. |
-
+[MIT](LICENSE)
