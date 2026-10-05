@@ -455,8 +455,8 @@ footer a{color:var(--ink-2)}
 
     <div class="abstract narrow">
       <span class="lbl">Abstract</span>
-      <p>Few-shot text classifiers rank their own errors badly: under severe data scarcity, confidence estimates do not separate correct from incorrect predictions well enough to sustain useful coverage under a risk constraint. We evaluate twelve Portuguese <em>corpora</em> at budgets of 1 to 10 examples per class, against seven <em>post-hoc</em> baselines &mdash; the strongest of them under an oracle hyperparameter sweep. <em>Episodic prototypical fine-tuning</em> shifts that frontier: AURC falls by a median of 67% at 5-shot. On a calibration set disjoint from model selection as well, the method certifies 0.91 coverage at a 5% target risk on court rulings, where the tuned baseline admits no feasible threshold at all.</p>
-      <p>A 4&times;2 factorial experiment separates representation from confidence estimator, and locates the effect in the representation. Measured on quantities that discount accuracy, changing the representation moves performance 6 to 24 times more than changing the score, depending on the quantity: a median of 0.056 against 0.0023 in E-AURC and of 0.091 against 0.014 in correct-vs-incorrect AUROC, across the twelve <em>corpora</em>. That range is measured against the estimators that read the prototypical geometry: evaluating all seven post-hoc scores of the grid there, four of them &mdash; denied by the regime the input they need &mdash; fall behind and narrow the ratio to about 1.2. Two caveats qualify the finding. Representation interventions are not interchangeable &mdash; SetFit, even at the configuration chosen by its own sweep on validation AURC, trails well behind and degrades severely at one example per class. And the certificate bounds risk only <em>in-distribution</em>: in a stream containing unseen classes, the same threshold reaches 15.2% empirical error against the 5% target, on the worst of the five <em>corpora</em> evaluated.</p>
+      <p>Few-shot text classifiers rank their own errors poorly, which rules out practical coverage under strict risk constraints. This work investigates whether the bottleneck lies in the representation or in the confidence estimator. Across twelve Portuguese corpora at 1, 5 and 10 examples per class, episodic prototypical fine-tuning cuts AURC by a median of 67% at 5-shot against the strongest of seven post-hoc baselines and certifies, on known classes, 0.91 coverage at 5% target risk on court rulings, where the tuned baseline admits no feasible threshold.</p>
+      <p>A 4&times;2 factorial design shows that adapting the representation matters 6 to 24 times more than swapping estimators over the same geometry, and halves, without eliminating, the penalty of estimators that rely on support-set statistics.</p>
     </div>
 
     <div class="cards">
@@ -1720,7 +1720,7 @@ make test-baselines                 <span class="c"># scorer unit tests</span></
       <button class="copy">Copy</button>
       <pre id="bib">@inproceedings{selective_risk_ptbr,
   title     = {Selective Classification in Few-Shot Text:
-               The Gain Comes from the Representation, Not the Confidence Score},
+               The Effect of Representation on Confidence Heuristics},
   author    = {Anonymous},
   booktitle = {Under review},
   year      = {2026},
